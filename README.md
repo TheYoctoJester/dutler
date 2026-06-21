@@ -335,5 +335,8 @@ DUTler is **sponsored by [Northern.tech](https://northern.tech) as part of the
 the embedded-Linux community. Thanks also to the Raspberry Pi Pico SDK and TinyUSB projects,
 which do the heavy USB lifting.
 
+The majority of the code in this repository was generated with
+[Claude Code](https://claude.com/claude-code), under human direction and review.
+
 > "Mender", "Northern.tech", and the Mender moose are trademarks of Northern.tech AS. They are
 > used here only to describe the project's purpose and the integration workflow it serves.
