@@ -49,7 +49,9 @@ add_executable(dutler
     src/main.c
     src/usb_descriptors.c
     src/bridge.c
-    src/out.c
+    src/outputs.c
+    src/console.c
+    src/command.c
     src/debug.c
     src/settings.c
     src/settings_codec.c
