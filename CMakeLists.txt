@@ -26,6 +26,13 @@ target_include_directories(usb_uart_relay PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
+# This firmware does no floating-point. Drop printf's float/exponential support
+# so the double-precision soft-float runtime isn't dragged into the image.
+target_compile_definitions(usb_uart_relay PRIVATE
+    PICO_PRINTF_SUPPORT_FLOAT=0
+    PICO_PRINTF_SUPPORT_EXPONENTIAL=0
+)
+
 target_link_libraries(usb_uart_relay
     pico_stdlib
     tinyusb_device

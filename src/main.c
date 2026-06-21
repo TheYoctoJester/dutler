@@ -44,5 +44,10 @@ int main(void) {
             gpio_put(LED_PIN, led_on);
             next_blink = make_timeout_time_ms(500);
         }
+
+        // Sleep the core until something happens (USB or UART RX IRQ) or the
+        // heartbeat is due, instead of spinning flat out. Worst-case wake is the
+        // 500 ms heartbeat, well inside the watchdog timeout.
+        best_effort_wfe_or_timeout(next_blink);
     }
 }
