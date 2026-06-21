@@ -22,7 +22,7 @@ void dbg_printf(const char *fmt, ...) {
     va_end(ap);
 
     if (n <= 0) return;
-    if (n > (int)sizeof(buf)) n = (int)sizeof(buf);  // truncated
+    if (n >= (int)sizeof(buf)) n = (int)sizeof(buf) - 1;  // vsnprintf truncated; drop the NUL
 
     tud_cdc_n_write(CDC_ITF_DEBUG, buf, (uint32_t)n);
     tud_cdc_n_write_flush(CDC_ITF_DEBUG);
