@@ -14,6 +14,8 @@
 #include "settings.h"
 #include "tusb.h"
 
+extern bool g_boot_by_watchdog;  // defined in main.c
+
 static const uint8_t relay_pins[RELAY_COUNT] = RELAY_PINS;
 static bool relay_state[RELAY_COUNT];
 static bool dirty = false;  // unsaved settings changes
@@ -89,6 +91,7 @@ static void print_status(void) {
              (unsigned long)g_settings.baud, g_settings.data_bits, pc,
              g_settings.stop_bits);
     cdc_print(msg);
+    if (g_boot_by_watchdog) cdc_print("note: last reset was a watchdog timeout\r\n");
     if (dirty) cdc_print("(unsaved changes - use 'save')\r\n");
 }
 

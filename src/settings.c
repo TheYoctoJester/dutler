@@ -6,6 +6,7 @@
 #include "config.h"
 #include "hardware/flash.h"
 #include "hardware/sync.h"
+#include "hardware/watchdog.h"
 #include "pico/stdlib.h"
 
 settings_t g_settings;
@@ -206,6 +207,10 @@ bool settings_save(void) {
     off += sizeof(g_settings);
     uint32_t crc = crc32(page, off);
     memcpy(page + off, &crc, sizeof(crc));
+
+    // Give the erase/program the full watchdog budget: it runs with interrupts
+    // masked and can take hundreds of ms (sector erase), feeding nothing.
+    watchdog_update();
 
     // Single core here, so masking interrupts is sufficient to make the
     // erase/program safe (no code runs from flash meanwhile).

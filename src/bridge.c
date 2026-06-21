@@ -20,6 +20,12 @@ static volatile uint16_t rx_head = 0;   // written by IRQ
 static volatile uint16_t rx_tail = 0;   // written by task
 static volatile uint32_t rx_drops = 0;  // bytes lost to ring overflow (IRQ-only writer)
 
+// USB->UART staging buffer. Main-loop-only (no IRQ access), so no volatile.
+#define TX_RING_SIZE 256
+static uint8_t tx_ring[TX_RING_SIZE];
+static uint16_t tx_head = 0;
+static uint16_t tx_tail = 0;
+
 static void on_uart_rx(void) {
     while (uart_is_readable(BRIDGE_UART)) {
         uint8_t c = (uint8_t)uart_getc(BRIDGE_UART);
@@ -49,11 +55,22 @@ void bridge_init(void) {
 }
 
 void bridge_task(void) {
-    // USB (CDC0) -> UART
-    if (tud_cdc_n_available(CDC_ITF_BRIDGE)) {
-        uint8_t buf[64];
-        uint32_t n = tud_cdc_n_read(CDC_ITF_BRIDGE, buf, sizeof(buf));
-        if (n) uart_write_blocking(BRIDGE_UART, buf, n);
+    // USB (CDC0) -> UART, non-blocking: stage into tx_ring, then push to the
+    // UART TX FIFO only as fast as it drains. Never block the loop, so the
+    // watchdog stays fed and USB stays serviced even at a very low baud rate.
+    // When tx_ring fills, we stop reading from USB -> TinyUSB NAKs the host ->
+    // proper backpressure instead of dropped bytes.
+    while (tud_cdc_n_available(CDC_ITF_BRIDGE)) {
+        uint16_t next = (uint16_t)((tx_head + 1) % TX_RING_SIZE);
+        if (next == tx_tail) break;  // staging buffer full; drain it first
+        int ch = tud_cdc_n_read_char(CDC_ITF_BRIDGE);
+        if (ch < 0) break;
+        tx_ring[tx_head] = (uint8_t)ch;
+        tx_head = next;
+    }
+    while (tx_tail != tx_head && uart_is_writable(BRIDGE_UART)) {
+        uart_putc_raw(BRIDGE_UART, (char)tx_ring[tx_tail]);
+        tx_tail = (uint16_t)((tx_tail + 1) % TX_RING_SIZE);
     }
 
     // UART -> USB (CDC0)

@@ -42,4 +42,11 @@
 // command on the relay port always works regardless.
 #define ENABLE_BAUD_TOUCH_RESET 1
 
+// ---- Watchdog -------------------------------------------------------
+// Auto-reboot if the main loop stops feeding the watchdog for this long
+// (e.g. a wedged USB stack). Must exceed the worst-case blocking section,
+// which is the flash sector erase during a settings 'save' (hundreds of ms
+// with interrupts masked); the save path feeds the watchdog just before it.
+#define WATCHDOG_TIMEOUT_MS 2000
+
 #endif  // CONFIG_H
