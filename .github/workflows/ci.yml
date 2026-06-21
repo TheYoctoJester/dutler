@@ -10,6 +10,24 @@ on:
   workflow_dispatch:
 
 jobs:
+  test:
+    name: Host unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build
+
+      - name: Build & run unit tests
+        run: |
+          cmake -S tests -B build-tests -G Ninja
+          cmake --build build-tests
+          ctest --test-dir build-tests --output-on-failure
+
   build:
     name: Build firmware (RP2040)
     runs-on: ubuntu-latest
