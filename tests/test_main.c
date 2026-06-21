@@ -54,8 +54,8 @@ static void test_settings_codec_roundtrip(void) {
     s.data_bits = 8;
     s.parity = 2;
     s.stop_bits = 1;
-    strcpy(s.relay_name[0], "pump");
-    strcpy(s.relay_name[2], "heater");
+    strcpy(s.out_name[0], "pump");
+    strcpy(s.out_name[2], "heater");
 
     uint8_t rec[SETTINGS_RECORD_LEN];
     CHECK(settings_codec_encode(rec, &s, 7) == SETTINGS_RECORD_LEN);
@@ -67,8 +67,8 @@ static void test_settings_codec_roundtrip(void) {
     CHECK(seq == 7);
     CHECK(memcmp(&s, &out, sizeof(s)) == 0);
     CHECK(out.baud == 9600 && out.parity == 2);
-    CHECK(strcmp(out.relay_name[0], "pump") == 0);
-    CHECK(strcmp(out.relay_name[2], "heater") == 0);
+    CHECK(strcmp(out.out_name[0], "pump") == 0);
+    CHECK(strcmp(out.out_name[2], "heater") == 0);
 }
 
 static void test_settings_codec_rejects(void) {
@@ -104,7 +104,7 @@ static void test_settings_codec_v1(void) {
     s.data_bits = 7;
     s.parity = 1;
     s.stop_bits = 2;
-    strcpy(s.relay_name[1], "alpha");
+    strcpy(s.out_name[1], "alpha");
 
     uint8_t rec[SC_OFF_PAYLOAD_V1 + sizeof(settings_t) + 4];
     uint32_t magic = SETTINGS_MAGIC, ver = 1u;
@@ -119,7 +119,7 @@ static void test_settings_codec_v1(void) {
     memset(&out, 0, sizeof(out));
     CHECK(settings_codec_decode_v1(rec, &out));
     CHECK(out.baud == 57600 && out.data_bits == 7 && out.parity == 1 && out.stop_bits == 2);
-    CHECK(strcmp(out.relay_name[1], "alpha") == 0);
+    CHECK(strcmp(out.out_name[1], "alpha") == 0);
 
     // a v1 record must not decode as v2 (version mismatch)
     uint32_t seq;

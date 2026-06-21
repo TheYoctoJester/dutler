@@ -30,7 +30,7 @@ cmake --build build          # -> build/dutler.uf2
 ./flash.sh                   # flash a connected Pico
 ```
 
-Host-side helpers live in `tools/` (loopback, relay, reset, debug-log capture). Where a change
+Host-side helpers live in `tools/` (loopback, output control, reset, debug-log capture). Where a change
 affects device behaviour, **verify it on real hardware** and say so in the PR.
 
 ## Coding style

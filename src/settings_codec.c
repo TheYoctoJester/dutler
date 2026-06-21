@@ -19,7 +19,7 @@ typedef struct {
     uint8_t data_bits;
     uint8_t parity;
     uint8_t stop_bits;
-    char relay_name[RELAY_COUNT][RELAY_NAME_MAX];
+    char out_name[OUT_COUNT][OUT_NAME_MAX];
     uint8_t reserved;
 } settings_v1_t;
 
@@ -28,11 +28,11 @@ _Static_assert(sizeof(settings_t) == sizeof(settings_v1_t),
                "snapshot the old layout as settings_v<N>_t and bump SETTINGS_VERSION");
 
 // No implicit padding; fields at their stored offsets.
-_Static_assert(sizeof(settings_v1_t) == 4u + 1u + 1u + 1u + (RELAY_COUNT * RELAY_NAME_MAX) + 1u,
+_Static_assert(sizeof(settings_v1_t) == 4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u,
                "implicit padding crept into settings_t");
 _Static_assert(offsetof(settings_v1_t, baud) == 0, "baud must stay at offset 0");
-_Static_assert(offsetof(settings_v1_t, relay_name) == 7,
-               "relay_name offset changed: this breaks every stored record");
+_Static_assert(offsetof(settings_v1_t, out_name) == 7,
+               "out_name offset changed: this breaks every stored record");
 
 static uint32_t rd_u32(const uint8_t *base, size_t off) {
     uint32_t v;
