@@ -72,6 +72,7 @@ static void print_status(void) {
     snprintf(msg, sizeof(msg), "bridge default %lu baud %u%c%u\r\n", (unsigned long)g_settings.baud,
              g_settings.data_bits, pc, g_settings.stop_bits);
     cdc_print(msg);
+    cdc_print("firmware DUTler " DUTLER_VERSION "\r\n");
     if (g_boot_by_watchdog) cdc_print("note: last reset was a watchdog timeout\r\n");
     if (dirty) cdc_print("(unsaved changes - use 'save')\r\n");
 }
@@ -105,6 +106,7 @@ static void print_help(void) {
         "  selftest                    GP0<->GP1 loopback continuity check\r\n"
         "  factory-reset confirm       erase saved settings (back to defaults)\r\n"
         "  status                      list relays + bridge defaults\r\n"
+        "  version                     print firmware version\r\n"
         "  bootsel                     reboot into USB bootloader\r\n"
         "  help                        show this text\r\n");
 }
@@ -152,8 +154,8 @@ static void cmd_relay(char **sp) {
 
 // Command words that a relay name must not shadow (they are matched first).
 static bool is_reserved_word(const char *w) {
-    static const char *const reserved[] = {"relay", "name",    "set",   "save",         "status",
-                                           "help",  "bootsel", "reset", "factory-reset"};
+    static const char *const reserved[] = {"relay", "name",    "set",   "save",          "status",
+                                           "help",  "bootsel", "reset", "factory-reset", "version"};
     for (size_t i = 0; i < sizeof(reserved) / sizeof(reserved[0]); i++)
         if (strcmp(w, reserved[i]) == 0) return true;
     return false;
@@ -274,6 +276,8 @@ static void parse_line(char *s) {
         cmd_set(&sp);
     } else if (strcmp(tok, "save") == 0) {
         cmd_save();
+    } else if (strcmp(tok, "version") == 0) {
+        cdc_print("DUTler " DUTLER_VERSION "\r\n");
     } else if (strcmp(tok, "selftest") == 0) {
         cdc_print(bridge_selftest() ? "selftest: GP0<->GP1 continuity OK\r\n"
                                     : "selftest: GP0<->GP1 OPEN (check the loopback jumper)\r\n");
