@@ -223,6 +223,8 @@ and `status` reports it. Relay outputs always come up OFF after any reset.
 DUTler/
 ├── LICENSE                # GPL-3.0 text (the open-source half of the dual license)
 ├── COMMERCIAL.md          # the commercial-license option from Northern.tech AS
+├── CONTRIBUTING.md        # how to contribute (DCO + CLA, build/style/PR)
+├── CLA.md                 # contributor license agreement (enables dual-licensing)
 ├── THIRD_PARTY.md         # third-party components + their licenses
 ├── env.sh                 # self-contained build environment (source before building)
 ├── flash.sh               # build + picotool load
@@ -257,6 +259,13 @@ host has the port open, so calls are cheap when unused. **Do not call `dbg_print
 interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 
 > USB VID/PID in `config.h` are pid.codes **test** IDs — replace before any distribution.
+
+## Contributing
+
+Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Because DUTler is
+dual-licensed, contributions require a DCO sign-off (`git commit -s`) **and** agreement to the
+[Contributor License Agreement](CLA.md), which lets Northern.tech offer your contribution under
+both the GPL and the commercial license.
 
 ## License
 
