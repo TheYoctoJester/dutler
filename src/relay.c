@@ -30,10 +30,11 @@ static void cdc_print(const char *s) {
     tud_cdc_n_write_flush(CDC_ITF_RELAY);
 }
 
-// Parse a base-10 unsigned integer, rejecting empty input and trailing junk
-// (unlike atoi(), which silently treats "banana" / "12x" as 0).
+// Parse a base-10 unsigned integer, rejecting empty input, a leading sign or
+// space, and trailing junk (unlike atoi(), or a bare strtoul() which would
+// accept "+5" and wrap "-1" to a huge value).
 static bool parse_u32(const char *s, uint32_t *out) {
-    if (!s || !*s) return false;
+    if (!s || s[0] < '0' || s[0] > '9') return false;  // must start with a digit
     char *end;
     unsigned long v = strtoul(s, &end, 10);
     if (*end != '\0') return false;  // reject anything not fully numeric
