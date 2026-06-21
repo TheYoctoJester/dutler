@@ -3,9 +3,10 @@
 
 #include "bridge.h"
 #include "config.h"
+#include "console.h"
 #include "debug.h"
 #include "hardware/watchdog.h"
-#include "out.h"
+#include "outputs.h"
 #include "pico/stdlib.h"
 #include "settings.h"
 #include "tusb.h"
@@ -29,7 +30,7 @@ int main(void) {
     settings_load();  // before bridge_init: provides the boot UART defaults
     tusb_init();
     bridge_init();
-    out_init();
+    outputs_init();
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
@@ -46,9 +47,9 @@ int main(void) {
     while (true) {
         watchdog_update();  // "I'm still alive"
 
-        tud_task();     // TinyUSB device stack
-        bridge_task();  // CDC0 <-> UART
-        out_task();     // CDC1 command parser
+        tud_task();      // TinyUSB device stack
+        bridge_task();   // CDC0 <-> UART
+        console_task();  // CDC1 control port -> command interpreter
 
         // Heartbeat so it's visibly alive even with no traffic.
         if (time_reached(next_blink)) {

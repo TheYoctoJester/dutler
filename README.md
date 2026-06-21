@@ -261,11 +261,13 @@ DUTler/
 ├── pico_sdk_import.cmake
 ├── include/config.h       # pins, output count/polarity, UART, USB IDs — main knobs
 ├── src/
-│   ├── main.c             # init + super-loop (tud_task / bridge / out)
+│   ├── main.c             # init + super-loop (tud_task / bridge / console)
 │   ├── tusb_config.h      # TinyUSB: 3× CDC, full-speed device
 │   ├── usb_descriptors.c  # composite triple-CDC descriptors + chip-ID serial
 │   ├── bridge.c/.h        # CDC0 <-> uart0, IRQ RX ring buffer, line-coding sync
-│   ├── out.c/.h           # CDC1 command parser -> GPIO outputs
+│   ├── outputs.c/.h       # GPIO output layer (power relay + strap/reset MOSFETs)
+│   ├── console.c/.h       # CDC1 line transport (read/assemble lines, write replies)
+│   ├── command.c/.h       # control-port command interpreter (parse + dispatch)
 │   ├── debug.c/.h         # dbg_printf() -> CDC2 debug-log port
 │   ├── settings.c/.h      # power-loss-safe A/B flash settings (flash I/O + slots)
 │   ├── settings_codec.c/.h # pure record (de)serialization — unit-tested
