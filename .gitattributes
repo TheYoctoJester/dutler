@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: Apache-2.0
+
+# Normalize all text to LF in the repo and working tree (enforced, unlike the
+# advisory .editorconfig) — keeps cross-platform contributors from sneaking CRLF.
+* text=eol=lf
+
+# Build/asset outputs are binary (don't ever munge line endings on these).
+*.uf2 binary
+*.elf binary
+*.bin binary
+*.hex binary
+*.png binary
+*.jpg binary
