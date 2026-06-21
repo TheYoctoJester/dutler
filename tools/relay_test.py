@@ -28,8 +28,8 @@ def send(cmd):
     print("-"*40)
 
 drain()                       # clear any banner
-for c in ["help", "status", "relay 1 on", "relay 2 on", "status",
-          "relay 1 off", "relay 3 toggle", "status", "relay 9 on", "bogus"]:
+for c in ["help", "status", "out 1 on", "out 2 on", "status",
+          "out 1 off", "out 3 toggle", "status", "out 9 on", "bogus"]:
     send(c)
     time.sleep(0.1)
 os.close(fd)

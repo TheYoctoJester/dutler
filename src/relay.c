@@ -47,7 +47,7 @@ void relay_init(void) {
     }
 }
 
-// Resolve a relay reference: a 1-based number or a configured name.
+// Resolve an output reference: a 1-based number or a configured name.
 static int resolve_relay(const char *tok) {
     if (!tok || !tok[0]) return -1;
     uint32_t n;
@@ -63,9 +63,9 @@ static void print_status(void) {
         const char *nm = g_settings.relay_name[i];
         const char *st = relay_state[i] ? "on" : "off";
         if (nm[0])
-            snprintf(msg, sizeof(msg), "relay %u (%s) %s\r\n", i + 1, nm, st);
+            snprintf(msg, sizeof(msg), "out %u (%s) %s\r\n", i + 1, nm, st);
         else
-            snprintf(msg, sizeof(msg), "relay %u %s\r\n", i + 1, st);
+            snprintf(msg, sizeof(msg), "out %u %s\r\n", i + 1, st);
         cdc_print(msg);
     }
     char pc = g_settings.parity == 1 ? 'O' : g_settings.parity == 2 ? 'E' : 'N';
@@ -81,7 +81,7 @@ static void print_banner(void) {
     cdc_print("\r\nDUTler control port. Type 'help' for commands.\r\n");
 }
 
-// Host opened/closed the relay port (DTR line). Greet on the rising edge.
+// Host opened/closed the control port (DTR line). Greet on the rising edge.
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
     (void)rts;
     static bool was_open = false;
@@ -97,65 +97,65 @@ static void print_help(void) {
     cdc_print(
         "DUTler control port\r\n"
         "commands (newline-terminated):\r\n"
-        "  relay <id> on|off|toggle    id = number 1.. or a name\r\n"
-        "  <id> on|off|toggle          shorthand: drop the 'relay' keyword\r\n"
-        "  name <n> <alias|clear>      label relay n\r\n"
+        "  out <id> on|off|toggle      id = number 1.. or a name\r\n"
+        "  <id> on|off|toggle          shorthand: drop the 'out' keyword\r\n"
+        "  name <n> <alias|clear>      label output n\r\n"
         "  set baud <n>                bridge boot baud rate\r\n"
         "  set format <8N1>            bridge boot data/parity/stop\r\n"
         "  save                        persist names + bridge defaults\r\n"
         "  selftest                    GP0<->GP1 loopback continuity check\r\n"
         "  factory-reset confirm       erase saved settings (back to defaults)\r\n"
-        "  status                      list relays + bridge defaults\r\n"
+        "  status                      list outputs + bridge defaults\r\n"
         "  version                     print firmware version\r\n"
         "  bootsel                     reboot into USB bootloader\r\n"
         "  help                        show this text\r\n");
 }
 
-// Perform an action on an already-resolved relay. The action token is pulled
-// from the caller's tokenizer state. Shared by "relay <id> ..." and the bare
+// Perform an action on an already-resolved output. The action token is pulled
+// from the caller's tokenizer state. Shared by "out <id> ..." and the bare
 // "<name> ..." shorthand.
 static void relay_action(int idx, char **sp) {
     char *a_cmd = strtok_r(NULL, " \t", sp);
     if (!a_cmd) {
-        cdc_print("error: usage '<relay> on|off|toggle'\r\n");
+        cdc_print("error: usage '<output> on|off|toggle'\r\n");
         return;
     }
 
     if (strcmp(a_cmd, "on") == 0) {
         apply_relay(idx, true);
-        dbg_printf("relay %d -> on\r\n", idx + 1);
+        dbg_printf("out %d -> on\r\n", idx + 1);
         cdc_print("ok\r\n");
     } else if (strcmp(a_cmd, "off") == 0) {
         apply_relay(idx, false);
-        dbg_printf("relay %d -> off\r\n", idx + 1);
+        dbg_printf("out %d -> off\r\n", idx + 1);
         cdc_print("ok\r\n");
     } else if (strcmp(a_cmd, "toggle") == 0) {
         apply_relay(idx, !relay_state[idx]);
-        dbg_printf("relay %d -> %s (toggle)\r\n", idx + 1, relay_state[idx] ? "on" : "off");
+        dbg_printf("out %d -> %s (toggle)\r\n", idx + 1, relay_state[idx] ? "on" : "off");
         cdc_print("ok\r\n");
     } else {
-        cdc_print("error: unknown relay command\r\n");
+        cdc_print("error: unknown output command\r\n");
     }
 }
 
 static void cmd_relay(char **sp) {
     char *a_id = strtok_r(NULL, " \t", sp);
     if (!a_id) {
-        cdc_print("error: usage 'relay <id> on|off|toggle'\r\n");
+        cdc_print("error: usage 'out <id> on|off|toggle'\r\n");
         return;
     }
     int idx = resolve_relay(a_id);
     if (idx < 0) {
-        cdc_print("error: unknown relay\r\n");
+        cdc_print("error: unknown output\r\n");
         return;
     }
     relay_action(idx, sp);
 }
 
-// Command words that a relay name must not shadow (they are matched first).
+// Command words that an output name must not shadow (they are matched first).
 static bool is_reserved_word(const char *w) {
-    static const char *const reserved[] = {"relay", "name",    "set",   "save",          "status",
-                                           "help",  "bootsel", "reset", "factory-reset", "version"};
+    static const char *const reserved[] = {"out",  "name",    "set",   "save",          "status",
+                                           "help", "bootsel", "reset", "factory-reset", "version"};
     for (size_t i = 0; i < sizeof(reserved) / sizeof(reserved[0]); i++)
         if (strcmp(w, reserved[i]) == 0) return true;
     return false;
@@ -170,7 +170,7 @@ static void cmd_name(char **sp) {
     }
     uint32_t n;
     if (!parse_u32(a_n, &n) || n < 1 || n > RELAY_COUNT) {
-        cdc_print("error: relay number out of range\r\n");
+        cdc_print("error: output number out of range\r\n");
         return;
     }
     char *dst = g_settings.relay_name[n - 1];
@@ -268,7 +268,7 @@ static void parse_line(char *s) {
         print_help();
     } else if (strcmp(tok, "status") == 0) {
         print_status();
-    } else if (strcmp(tok, "relay") == 0) {
+    } else if (strcmp(tok, "out") == 0) {
         cmd_relay(&sp);
     } else if (strcmp(tok, "name") == 0) {
         cmd_name(&sp);
@@ -296,8 +296,8 @@ static void parse_line(char *s) {
         while (!time_reached(deadline)) tud_task();
         reset_usb_boot(0, 0);  // does not return
     } else {
-        // Shorthand: a relay number or configured name used as a verb,
-        // e.g. "pump on" == "relay pump on".
+        // Shorthand: an output number or configured name used as a verb,
+        // e.g. "pump on" == "out pump on".
         int idx = resolve_relay(tok);
         if (idx >= 0)
             relay_action(idx, &sp);

@@ -31,5 +31,5 @@ In scope (please do report):
 - flash-settings handling that could corrupt or be exploited via crafted/garbage records.
 
 Out of scope:
-- the documented local-control capabilities above (relays/reset/bootsel from the control port);
+- the documented local-control capabilities above (outputs/reset/bootsel from the control port);
 - physical attacks requiring board access (e.g. holding BOOTSEL, SWD).
