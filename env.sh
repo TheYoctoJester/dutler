@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Northern.tech AS
 # SPDX-License-Identifier: Apache-2.0
 
+# shellcheck shell=bash  # sourced (no shebang); tell shellcheck the dialect
+#
 # Source this before building:  source env.sh
 #
 # Portable, override-friendly build environment for DUTler. Anything already set
@@ -30,7 +32,8 @@ fi
 # picotool's CMake package (so the SDK doesn't rebuild picotool). Homebrew on this
 # machine; CI should pre-set picotool_DIR or install picotool to a known prefix.
 if [ -z "${picotool_DIR:-}" ] && command -v brew >/dev/null 2>&1; then
-    export picotool_DIR="$(brew --prefix picotool 2>/dev/null)/lib/cmake/picotool"
+    picotool_DIR="$(brew --prefix picotool 2>/dev/null)/lib/cmake/picotool"
+    export picotool_DIR
 fi
 
 # Put the toolchain on PATH if we found/were given one.
