@@ -30,4 +30,5 @@ Pico SDK / Arm GNU toolchain you install per the README *Requirements*).
 - `pico_sdk_import.cmake` in this repo is copied verbatim from the Pico SDK and retains its own
   Raspberry Pi BSD-3-Clause header (so it carries no DUTler SPDX header).
 
-SPDX identifiers used in this repo: `Apache-2.0` (firmware), `CERN-OHL-P-2.0` (hardware), and `CC-BY-4.0` (docs).
+SPDX identifiers used in this repo: `Apache-2.0`
+(firmware), and — once hardware lands — `CERN-OHL-P-2.0` (board) and `CC-BY-4.0` (docs).
