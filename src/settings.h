@@ -29,4 +29,7 @@ void settings_load(void);
 // Persist g_settings to flash. Returns true on success (verified read-back).
 bool settings_save(void);
 
+// Erase the stored record and reset g_settings to defaults (factory reset).
+void settings_reset(void);
+
 #endif  // SETTINGS_H

@@ -201,3 +201,11 @@ bool settings_save(void) {
     const uint8_t *base = (const uint8_t *)(XIP_BASE + SETTINGS_OFFSET);
     return record_crc_ok(base, sizeof(settings_t));
 }
+
+void settings_reset(void) {
+    // Erase the record so the next boot also sees a blank sector -> defaults.
+    uint32_t ints = save_and_disable_interrupts();
+    flash_range_erase(SETTINGS_OFFSET, FLASH_SECTOR_SIZE);
+    restore_interrupts(ints);
+    load_defaults();
+}

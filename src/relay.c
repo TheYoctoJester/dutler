@@ -113,6 +113,7 @@ static void print_help(void) {
         "  set baud <n>                bridge boot baud rate\r\n"
         "  set format <8N1>            bridge boot data/parity/stop\r\n"
         "  save                        persist names + bridge defaults\r\n"
+        "  factory-reset confirm       erase saved settings (back to defaults)\r\n"
         "  status                      list relays + bridge defaults\r\n"
         "  bootsel                     reboot into USB bootloader\r\n"
         "  help                        show this text\r\n");
@@ -271,6 +272,15 @@ static void parse_line(char *s) {
         cmd_set();
     } else if (strcmp(tok, "save") == 0) {
         cmd_save();
+    } else if (strcmp(tok, "factory-reset") == 0) {
+        char *a = strtok(NULL, " \t");
+        if (!a || strcmp(a, "confirm") != 0) {
+            cdc_print("error: 'factory-reset confirm' erases all saved settings\r\n");
+        } else {
+            settings_reset();
+            dirty = false;
+            cdc_print("factory reset done (bridge UART defaults apply after reboot)\r\n");
+        }
     } else if (strcmp(tok, "bootsel") == 0 || strcmp(tok, "reset") == 0) {
         cdc_print("rebooting to BOOTSEL\r\n");
         absolute_time_t deadline = make_timeout_time_ms(50);

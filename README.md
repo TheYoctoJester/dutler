@@ -83,6 +83,7 @@ name <n> <alias|clear>      label relay n (then usable as <id> above)
 set baud <n>                bridge boot baud rate
 set format <8N1>            bridge boot data/parity/stop (e.g. 8N1, 7E1)
 save                        persist names + bridge defaults to flash
+factory-reset confirm       erase saved settings (back to defaults)
 status                      list relays + bridge defaults
 bootsel                     reboot into USB bootloader
 help                        show command help
