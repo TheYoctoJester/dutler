@@ -22,6 +22,9 @@ add_executable(dutler
     src/relay.c
     src/debug.c
     src/settings.c
+    src/settings_codec.c
+    src/crc32.c
+    src/parse.c
 )
 
 target_include_directories(dutler PRIVATE

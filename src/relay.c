@@ -6,12 +6,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "bridge.h"
 #include "config.h"
 #include "debug.h"
+#include "parse.h"
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
@@ -31,18 +31,6 @@ static uint8_t line_len = 0;
 static void cdc_print(const char *s) {
     tud_cdc_n_write_str(CDC_ITF_RELAY, s);
     tud_cdc_n_write_flush(CDC_ITF_RELAY);
-}
-
-// Parse a base-10 unsigned integer, rejecting empty input, a leading sign or
-// space, and trailing junk (unlike atoi(), or a bare strtoul() which would
-// accept "+5" and wrap "-1" to a huge value).
-static bool parse_u32(const char *s, uint32_t *out) {
-    if (!s || s[0] < '0' || s[0] > '9') return false;  // must start with a digit
-    char *end;
-    unsigned long v = strtoul(s, &end, 10);
-    if (*end != '\0') return false;  // reject anything not fully numeric
-    *out = (uint32_t)v;
-    return true;
 }
 
 static void apply_relay(uint8_t idx, bool on) {

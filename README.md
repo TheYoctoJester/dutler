@@ -149,22 +149,38 @@ image. You can also trigger the reset yourself:
 
 ## Test
 
-After flashing, two devices appear: `ls /dev/tty.usbmodem*` (two entries).
+### On hardware
+
+After flashing, **three** devices appear: `ls /dev/tty.usbmodem*` (bridge / control / debug log).
 
 - **Bridge loopback:** jumper **GP0↔GP1**, open the *UART Bridge* port and echo:
   ```sh
   screen /dev/tty.usbmodemXXXX 115200     # type chars -> should echo back
   ```
-  (Ctrl-A then K to quit `screen`.) Changing baud still works — it's pushed to the UART.
-- **Relays:** open the *Relay Control* port and send commands:
+  (Ctrl-A then K to quit `screen`.) Changing baud still works — it's pushed to the UART. The
+  control port's `selftest` command checks GP0↔GP1 continuity for you.
+- **Control outputs:** open the *Relay Control* port and send commands:
   ```
   help
   status
   relay 1 on
   relay 1 off
-  relay 2 toggle
-  relay 3 pulse 500
+  name 2 fan
+  fan toggle
   ```
+
+### Unit tests (host)
+
+The pure logic — CRC-32, integer parsing, and the settings record codec — has off-target unit
+tests that build with the **native** compiler (no Pico, no SDK):
+
+```sh
+cmake -S tests -B build-tests
+cmake --build build-tests
+ctest --test-dir build-tests --output-on-failure
+```
+
+CI runs these on every push and pull request.
 
 ## Relay command grammar
 
@@ -244,7 +260,11 @@ DUTler/
 │   ├── bridge.c/.h        # CDC0 <-> uart0, IRQ RX ring buffer, line-coding sync
 │   ├── relay.c/.h         # CDC1 command parser -> GPIO
 │   ├── debug.c/.h         # dbg_printf() -> CDC2 debug-log port
-│   └── settings.c/.h      # power-loss-safe A/B flash settings
+│   ├── settings.c/.h      # power-loss-safe A/B flash settings (flash I/O + slots)
+│   ├── settings_codec.c/.h # pure record (de)serialization — unit-tested
+│   ├── crc32.c/.h         # pure CRC-32 — unit-tested
+│   └── parse.c/.h         # pure integer parsing — unit-tested
+├── tests/                 # host unit tests (native build, no SDK) + CMakeLists
 ├── tools/                 # host-side test/util scripts (loopback, relay, reset, debug)
 └── hardware/              # (future) open-hardware carrier board — see hardware/README.md
 ```
