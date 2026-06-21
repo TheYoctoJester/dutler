@@ -37,6 +37,54 @@ The firmware makes a stock Pico enumerate as **three USB serial ports**:
 On macOS these enumerate as three ports, e.g. `usbmodemXXX1` (bridge), `usbmodemXXX3`
 (control), `usbmodemXXX5` (debug log).
 
+## Requirements
+
+**Host (build machine): macOS or Linux.**
+
+- **CMake ≥ 3.13**, **Ninja**, **picotool**, and the **Arm GNU bare-metal toolchain**
+  (`arm-none-eabi-gcc` — developed against *14.2.Rel1*).
+  - macOS: `brew install cmake ninja picotool`, plus the Arm toolchain (download the
+    `arm-gnu-toolchain-*-arm-none-eabi` for darwin and unpack it).
+  - Linux: your distro's `cmake`, `ninja-build`, `picotool` (or build it), plus the Arm GNU
+    toolchain (distro package or the official tarball).
+- **Raspberry Pi Pico SDK 2.2.0** with submodules (it pulls in TinyUSB).
+- **Python 3** — only for the host-side helper scripts in `tools/` (optional).
+
+Put the SDK and toolchain **next to this repo** (siblings of the `DUTler/` directory) and `env.sh`
+finds them automatically — or export `PICO_SDK_PATH` / `PICO_TOOLCHAIN_PATH` / `picotool_DIR`
+yourself (env.sh honors anything already set, which is how CI pins its own paths).
+
+**Target:** a stock **Raspberry Pi Pico (RP2040)** (`PICO_BOARD=pico`) and a USB cable. A single
+jumper wire between **GP0 and GP1** is handy for the bridge loopback self-test.
+
+## Quick start
+
+Once the requirements are in place:
+
+```sh
+# fetch the SDK as a sibling of this repo (one-time)
+git -C .. clone --branch 2.2.0 https://github.com/raspberrypi/pico-sdk.git
+git -C ../pico-sdk submodule update --init
+
+# build -> build/dutler.uf2
+source env.sh
+cmake -S . -B build -G Ninja \
+  -DPICO_SDK_PATH="$PICO_SDK_PATH" \
+  -DPICO_TOOLCHAIN_PATH="$PICO_TOOLCHAIN_PATH" \
+  -Dpicotool_DIR="$picotool_DIR"
+cmake --build build
+
+# flash: hold BOOTSEL while plugging in the Pico, then
+./flash.sh                              # or drag build/dutler.uf2 onto the RPI-RP2 drive
+
+# use it: three USB serial ports appear
+ls /dev/cu.usbmodem*                    # bridge (…1), control (…3), debug log (…5)
+screen /dev/cu.usbmodemXXXX1 115200     # the DUT serial console
+#   …then open the control port (…3) and type 'help' for relay/strap/reset commands
+```
+
+See **Build**, **Flash** and **Test** below for the details, and **Wiring** for pin assignments.
+
 ## Wiring (defaults, see `include/config.h`)
 
 | Function | Pin |
