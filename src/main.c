@@ -37,7 +37,8 @@ int main(void) {
     // Recover automatically if the main loop ever wedges (e.g. USB stack hang).
     watchdog_enable(WATCHDOG_TIMEOUT_MS, true /*pause while debugging*/);
 
-    dbg_printf("boot: %s\r\n", g_boot_by_watchdog ? "WATCHDOG RESET" : "normal");
+    dbg_printf("DUTler %s — boot: %s\r\n", DUTLER_VERSION,
+               g_boot_by_watchdog ? "WATCHDOG RESET" : "normal");
 
     absolute_time_t next_blink = make_timeout_time_ms(500);
     bool led_on = false;
