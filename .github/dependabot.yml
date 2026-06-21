@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Northern.tech-Commercial
+version: 2
+updates:
+  # Keep the SHA-pinned GitHub Actions current (bumps the pin + the # vN comment).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "ci"
