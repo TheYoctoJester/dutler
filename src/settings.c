@@ -129,25 +129,26 @@ static void load_defaults(void) {
     // relay_name[] left as empty strings
 }
 
-// Read a current-version (v2) record from a slot. On success, copies the payload
-// into g_settings and outputs its sequence number.
-static bool read_v2(const uint8_t *base, uint32_t *seq_out) {
+// Read a current-version (v2) record from a slot into *out and its sequence into
+// *seq_out. Pure: touches no globals; leaves *out untouched on any failure.
+static bool read_v2(const uint8_t *base, settings_t *out, uint32_t *seq_out) {
     if (rd_u32(base, OFF_MAGIC) != SETTINGS_MAGIC) return false;
     if (rd_u32(base, OFF_VERSION) != SETTINGS_VERSION) return false;
     size_t crc_off = OFF_PAYLOAD_V2 + sizeof(settings_t);
     if (crc32(base, crc_off) != rd_u32(base, crc_off)) return false;
     *seq_out = rd_u32(base, OFF_SEQ);
-    memcpy(&g_settings, base + OFF_PAYLOAD_V2, sizeof(settings_t));
+    memcpy(out, base + OFF_PAYLOAD_V2, sizeof(settings_t));
     return true;
 }
 
-// Read a legacy (v1) record. Same payload struct, no seq, payload at offset 8.
-static bool read_v1(const uint8_t *base) {
+// Read a legacy (v1) record into *out. Same payload struct, no seq, payload at
+// offset 8. Pure, like read_v2.
+static bool read_v1(const uint8_t *base, settings_t *out) {
     if (rd_u32(base, OFF_MAGIC) != SETTINGS_MAGIC) return false;
     if (rd_u32(base, OFF_VERSION) != 1u) return false;
     size_t crc_off = OFF_PAYLOAD_V1 + sizeof(settings_t);
     if (crc32(base, crc_off) != rd_u32(base, crc_off)) return false;
-    memcpy(&g_settings, base + OFF_PAYLOAD_V1, sizeof(settings_t));
+    memcpy(out, base + OFF_PAYLOAD_V1, sizeof(settings_t));
     return true;
 }
 
@@ -155,36 +156,38 @@ void settings_load(void) {
     const uint8_t *a = (const uint8_t *)(XIP_BASE + SLOT_A_OFFSET);
     const uint8_t *b = (const uint8_t *)(XIP_BASE + SLOT_B_OFFSET);
 
+    settings_t cand;
+    uint32_t seq, best = 0;
     bool have = false;
-    uint32_t best = 0, seq;
-    settings_t pick;
 
-    if (read_v2(a, &seq)) {
-        pick = g_settings;
+    // Pick the valid slot with the highest sequence number. g_settings is
+    // assigned only for the candidate that actually wins.
+    if (read_v2(a, &cand, &seq)) {
+        g_settings = cand;
         best = seq;
         active_slot = 0;
         have = true;
     }
-    if (read_v2(b, &seq) && (!have || seq > best)) {
-        pick = g_settings;  // g_settings was overwritten by read_v2(b)
+    if (read_v2(b, &cand, &seq) && (!have || seq > best)) {
+        g_settings = cand;
         best = seq;
         active_slot = 1;
         have = true;
     }
 
     if (have) {
-        g_settings = pick;  // ensure the winning slot's payload is the one kept
         g_seq = best;
         terminate_names();
         return;
     }
 
     // No valid v2 record: upgrade a legacy v1 record in place if present.
-    if (read_v1((const uint8_t *)(XIP_BASE + LEGACY_OFFSET))) {
+    if (read_v1((const uint8_t *)(XIP_BASE + LEGACY_OFFSET), &cand)) {
+        g_settings = cand;
         terminate_names();
         g_seq = 0;
-        active_slot = 1;     // pretend B is active so the upgrade writes slot A
-        settings_save();     // persist as v2 (best-effort; re-tried next boot)
+        active_slot = 1;  // pretend B is active so the upgrade writes slot A
+        settings_save();  // persist as v2 (best-effort; retried next boot)
         return;
     }
 
@@ -217,13 +220,13 @@ bool settings_save(void) {
     flash_range_program(off, page, FLASH_PAGE_SIZE);
     restore_interrupts(ints);
 
-    // Verify the freshly written slot before it counts. If it fails, the other
-    // (still-intact) slot remains the freshest, so no config is lost.
+    // Verify the freshly written slot before it counts. On failure the other
+    // (still-intact) slot stays freshest, so no config is lost. Reads into a
+    // scratch buffer — g_settings is never disturbed.
+    settings_t chk;
     uint32_t chk_seq;
-    settings_t keep = g_settings;
-    bool ok = read_v2((const uint8_t *)(XIP_BASE + off), &chk_seq) && chk_seq == seq;
-    g_settings = keep;  // read_v2 overwrote g_settings during verify; restore it
-    if (!ok) return false;
+    if (!read_v2((const uint8_t *)(XIP_BASE + off), &chk, &chk_seq) || chk_seq != seq)
+        return false;
 
     g_seq = seq;
     active_slot = target;
