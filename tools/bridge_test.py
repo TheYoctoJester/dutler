@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Northern.tech AS
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Northern.tech-Commercial
 
 # Loopback test for the UART bridge port (CDC0).
 # REQUIRES a jumper wire between GP0 (pin 1) and GP1 (pin 2).

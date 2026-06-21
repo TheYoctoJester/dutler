@@ -1,6 +1,7 @@
 # Third-party components
 
-DUTler's own source is **GPL-3.0-or-later** (see [`LICENSE`](LICENSE)). It is built on, and links
+DUTler's own source is dual-licensed **GPL-3.0-or-later OR a commercial license** (see
+[`LICENSE`](LICENSE) and [`COMMERCIAL.md`](COMMERCIAL.md)). It is built on, and links
 against, the following third-party components. They keep their own licenses and are **not**
 relicensed by this project. Full license texts ship inside each component's source tree (in the
 Pico SDK / Arm GNU toolchain you install per the README *Requirements*).
@@ -30,5 +31,5 @@ Pico SDK / Arm GNU toolchain you install per the README *Requirements*).
 - `pico_sdk_import.cmake` in this repo is copied verbatim from the Pico SDK and retains its own
   Raspberry Pi BSD-3-Clause header (so it carries no DUTler SPDX header).
 
-SPDX identifiers used in this repo: `GPL-3.0-or-later` (firmware), and — once hardware lands —
-`CERN-OHL-S-2.0` (board) and `CC-BY-SA-4.0` (docs).
+SPDX identifiers used in this repo: `GPL-3.0-or-later OR LicenseRef-Northern.tech-Commercial`
+(firmware), and — once hardware lands — `CERN-OHL-S-2.0` (board) and `CC-BY-SA-4.0` (docs).

@@ -221,7 +221,8 @@ and `status` reports it. Relay outputs always come up OFF after any reset.
 
 ```
 DUTler/
-├── LICENSE                # firmware license: GPL-3.0-or-later
+├── LICENSE                # GPL-3.0 text (the open-source half of the dual license)
+├── COMMERCIAL.md          # the commercial-license option from Northern.tech AS
 ├── THIRD_PARTY.md         # third-party components + their licenses
 ├── env.sh                 # self-contained build environment (source before building)
 ├── flash.sh               # build + picotool load
@@ -259,17 +260,24 @@ interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 
 ## License
 
-Copyright © 2026 Northern.tech AS and the DUTler contributors.
+Copyright © 2026 Northern.tech AS.
 
-- **Firmware** (this repo's `src/`, `include/`, build scripts): **GPL-3.0-or-later** — see
-  [`LICENSE`](LICENSE). Copyleft: redistributed/modified firmware must stay GPL.
-- **Hardware** (future `hardware/`): intended to be **CERN-OHL-S-2.0** (strongly-reciprocal
-  open hardware) — see `hardware/README.md`.
+The firmware is **dual-licensed** — use it under *either*:
+
+- **GPL-3.0-or-later** (open source) — see [`LICENSE`](LICENSE); derivatives stay GPL; **or**
+- a **commercial / proprietary license** from **Northern.tech AS**, for use without the GPL's
+  copyleft obligations — see [`COMMERCIAL.md`](COMMERCIAL.md).
+
+Every source file carries the [SPDX](https://spdx.dev) identifier
+`GPL-3.0-or-later OR LicenseRef-Northern.tech-Commercial`. Northern.tech AS holds copyright on all
+files, which is what makes both options possible; to keep that so, contributions must be
+assignable/relicensable to Northern.tech (see [`COMMERCIAL.md`](COMMERCIAL.md)).
+
+- **Hardware** (future `hardware/`): intended to be **CERN-OHL-S-2.0** — see `hardware/README.md`.
 - **Documentation** may be offered under **CC-BY-SA-4.0**.
 
-Every source file carries an [SPDX](https://spdx.dev) license identifier. Third-party components
-keep their own licenses and are *not* relicensed (Pico SDK, TinyUSB, newlib, libgcc, …) — see
-[`THIRD_PARTY.md`](THIRD_PARTY.md).
+Third-party components keep their own licenses and are *not* relicensed (Pico SDK, TinyUSB,
+newlib, libgcc, …) — see [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 ## Acknowledgements
 
