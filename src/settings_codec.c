@@ -28,8 +28,7 @@ _Static_assert(sizeof(settings_t) == sizeof(settings_v1_t),
                "snapshot the old layout as settings_v<N>_t and bump SETTINGS_VERSION");
 
 // No implicit padding; fields at their stored offsets.
-_Static_assert(sizeof(settings_v1_t) ==
-                   4u + 1u + 1u + 1u + (RELAY_COUNT * RELAY_NAME_MAX) + 1u,
+_Static_assert(sizeof(settings_v1_t) == 4u + 1u + 1u + 1u + (RELAY_COUNT * RELAY_NAME_MAX) + 1u,
                "implicit padding crept into settings_t");
 _Static_assert(offsetof(settings_v1_t, baud) == 0, "baud must stay at offset 0");
 _Static_assert(offsetof(settings_v1_t, relay_name) == 7,

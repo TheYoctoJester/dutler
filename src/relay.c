@@ -51,12 +51,9 @@ void relay_init(void) {
 static int resolve_relay(const char *tok) {
     if (!tok || !tok[0]) return -1;
     uint32_t n;
-    if (parse_u32(tok, &n))
-        return (n >= 1 && n <= RELAY_COUNT) ? (int)(n - 1) : -1;
+    if (parse_u32(tok, &n)) return (n >= 1 && n <= RELAY_COUNT) ? (int)(n - 1) : -1;
     for (int i = 0; i < RELAY_COUNT; i++)
-        if (g_settings.relay_name[i][0] &&
-            strcmp(g_settings.relay_name[i], tok) == 0)
-            return i;
+        if (g_settings.relay_name[i][0] && strcmp(g_settings.relay_name[i], tok) == 0) return i;
     return -1;
 }
 
@@ -72,9 +69,8 @@ static void print_status(void) {
         cdc_print(msg);
     }
     char pc = g_settings.parity == 1 ? 'O' : g_settings.parity == 2 ? 'E' : 'N';
-    snprintf(msg, sizeof(msg), "bridge default %lu baud %u%c%u\r\n",
-             (unsigned long)g_settings.baud, g_settings.data_bits, pc,
-             g_settings.stop_bits);
+    snprintf(msg, sizeof(msg), "bridge default %lu baud %u%c%u\r\n", (unsigned long)g_settings.baud,
+             g_settings.data_bits, pc, g_settings.stop_bits);
     cdc_print(msg);
     if (g_boot_by_watchdog) cdc_print("note: last reset was a watchdog timeout\r\n");
     if (dirty) cdc_print("(unsaved changes - use 'save')\r\n");
@@ -133,8 +129,7 @@ static void relay_action(int idx, char **sp) {
         cdc_print("ok\r\n");
     } else if (strcmp(a_cmd, "toggle") == 0) {
         apply_relay(idx, !relay_state[idx]);
-        dbg_printf("relay %d -> %s (toggle)\r\n", idx + 1,
-                   relay_state[idx] ? "on" : "off");
+        dbg_printf("relay %d -> %s (toggle)\r\n", idx + 1, relay_state[idx] ? "on" : "off");
         cdc_print("ok\r\n");
     } else {
         cdc_print("error: unknown relay command\r\n");
@@ -157,9 +152,8 @@ static void cmd_relay(char **sp) {
 
 // Command words that a relay name must not shadow (they are matched first).
 static bool is_reserved_word(const char *w) {
-    static const char *const reserved[] = {
-        "relay", "name",    "set",   "save", "status",
-        "help",  "bootsel", "reset", "factory-reset"};
+    static const char *const reserved[] = {"relay", "name",    "set",   "save",         "status",
+                                           "help",  "bootsel", "reset", "factory-reset"};
     for (size_t i = 0; i < sizeof(reserved) / sizeof(reserved[0]); i++)
         if (strcmp(w, reserved[i]) == 0) return true;
     return false;
@@ -281,9 +275,8 @@ static void parse_line(char *s) {
     } else if (strcmp(tok, "save") == 0) {
         cmd_save();
     } else if (strcmp(tok, "selftest") == 0) {
-        cdc_print(bridge_selftest()
-                      ? "selftest: GP0<->GP1 continuity OK\r\n"
-                      : "selftest: GP0<->GP1 OPEN (check the loopback jumper)\r\n");
+        cdc_print(bridge_selftest() ? "selftest: GP0<->GP1 continuity OK\r\n"
+                                    : "selftest: GP0<->GP1 OPEN (check the loopback jumper)\r\n");
     } else if (strcmp(tok, "factory-reset") == 0) {
         char *a = strtok_r(NULL, " \t", &sp);
         if (!a || strcmp(a, "confirm") != 0) {

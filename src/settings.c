@@ -41,8 +41,7 @@ settings_t g_settings;
 #define LEGACY_OFFSET SLOT_B_OFFSET
 
 // A record must fit in one programmable flash page.
-_Static_assert(SETTINGS_RECORD_LEN <= FLASH_PAGE_SIZE,
-               "settings record exceeds one flash page");
+_Static_assert(SETTINGS_RECORD_LEN <= FLASH_PAGE_SIZE, "settings record exceeds one flash page");
 
 // 0 = slot A, 1 = slot B. Tracks which slot holds the freshest record so save()
 // writes the other one. g_seq is that record's sequence number.
@@ -53,8 +52,7 @@ static uint32_t g_seq;
 // always terminates and the CRC guards corruption, but downstream strlen/strcmp/
 // "%s" must never over-read past a name field. Call after any load.
 static void terminate_names(void) {
-    for (int i = 0; i < RELAY_COUNT; i++)
-        g_settings.relay_name[i][RELAY_NAME_MAX - 1] = '\0';
+    for (int i = 0; i < RELAY_COUNT; i++) g_settings.relay_name[i][RELAY_NAME_MAX - 1] = '\0';
 }
 
 static void load_defaults(void) {
@@ -131,8 +129,7 @@ bool settings_save(void) {
     // scratch buffer — g_settings is never disturbed.
     settings_t chk;
     uint32_t chk_seq;
-    if (!settings_codec_decode((const uint8_t *)(XIP_BASE + off), &chk, &chk_seq) ||
-        chk_seq != seq)
+    if (!settings_codec_decode((const uint8_t *)(XIP_BASE + off), &chk, &chk_seq) || chk_seq != seq)
         return false;
 
     g_seq = seq;
