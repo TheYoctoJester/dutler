@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Northern.tech AS
+// SPDX-License-Identifier: Apache-2.0
+
 #ifndef BRIDGE_H
 #define BRIDGE_H
 

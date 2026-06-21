@@ -222,6 +222,7 @@ and `status` reports it. Relay outputs always come up OFF after any reset.
 ```
 DUTler/
 ├── LICENSE                # Apache-2.0 license text
+├── THIRD_PARTY.md         # third-party components + their licenses
 ├── env.sh                 # self-contained build environment (source before building)
 ├── flash.sh               # build + picotool load
 ├── CMakeLists.txt

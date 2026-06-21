@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: Apache-2.0
+
 # Loopback test for the UART bridge port (CDC0).
 # REQUIRES a jumper wire between GP0 (pin 1) and GP1 (pin 2).
 # Usage: python3 tools/bridge_test.py [/dev/cu.usbmodemXXXX]
