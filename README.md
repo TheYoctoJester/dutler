@@ -116,6 +116,17 @@ blocking section. At boot the firmware records whether the reset was a real watc
 (via `watchdog_enable_caused_reboot()`, which ignores deliberate `bootsel`/reflash reboots)
 and `status` reports it. Relay outputs always come up OFF after any reset.
 
+## Design notes / non-goals
+
+- **No UART flow control — intentional, not missing.** The bridge is a 3-wire link
+  (TX/RX/GND): no hardware RTS/CTS and no software XON/XOFF. This is a deliberate scope
+  decision. Backpressure exists where it matters — USB→UART is non-blocking and NAKs the host
+  when the staging buffer fills — and the only lossy path (UART→USB ring overflow when the host
+  stops reading) is **reported** on the debug port rather than prevented. Use matched baud
+  rates and don't firehose the bridge from a flow-controlled peer. Please don't "add the missing
+  flow control": it's a choice. If a future use case genuinely needs it, wire RTS/CTS pins and
+  call `uart_set_hw_flow()` in `bridge.c` — but that's a new feature, not a fix.
+
 ## Layout
 
 ```

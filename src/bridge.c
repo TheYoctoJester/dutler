@@ -48,6 +48,10 @@ static void configure_uart(void) {
     gpio_set_function(BRIDGE_RX_PIN, GPIO_FUNC_UART);
     gpio_disable_pulls(BRIDGE_TX_PIN);  // clear anything the self-test left
     gpio_disable_pulls(BRIDGE_RX_PIN);
+    // No hardware flow control (RTS/CTS) — deliberate, not an omission. This is
+    // a 3-wire (TX/RX/GND) bridge: USB->UART has backpressure (non-blocking TX
+    // NAKs the host) and UART->USB overflow is reported on the debug port. See
+    // "Design notes / non-goals" in README.md before adding flow control.
     uart_set_hw_flow(BRIDGE_UART, false, false);
     uart_set_format(BRIDGE_UART, g_settings.data_bits, g_settings.stop_bits,
                     parity_enum(g_settings.parity));
