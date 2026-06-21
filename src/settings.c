@@ -137,10 +137,19 @@ static bool record_crc_ok(const uint8_t *base, size_t payload_size) {
     return crc32(base, HDR_BYTES + payload_size) == stored;
 }
 
+// Force every relay name to be NUL-terminated. Defense-in-depth: the write path
+// always terminates and the CRC guards corruption, but downstream strlen/strcmp/
+// "%s" must never be able to over-read past a name field. Call after any load.
+static void terminate_names(void) {
+    for (int i = 0; i < RELAY_COUNT; i++)
+        g_settings.relay_name[i][RELAY_NAME_MAX - 1] = '\0';
+}
+
 // Load a record written by the CURRENT version directly into g_settings.
 static bool load_current(const uint8_t *base) {
     if (!record_crc_ok(base, sizeof(settings_t))) return false;
     memcpy(&g_settings, base + HDR_BYTES, sizeof(settings_t));
+    terminate_names();
     return true;
 }
 
@@ -161,6 +170,7 @@ static bool load_current(const uint8_t *base) {
  *      g_settings.parity    = old.parity;
  *      g_settings.stop_bits = old.stop_bits;
  *      memcpy(g_settings.relay_name, old.relay_name, sizeof(old.relay_name));
+ *      terminate_names();                     // never trust loaded names
  *      return true;
  *  }
  * ---------------------------------------------------------------------------
