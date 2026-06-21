@@ -64,8 +64,22 @@ target_include_directories(dutler PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
-# Warnings on our own sources only (PRIVATE — not the Pico SDK / TinyUSB libs).
-target_compile_options(dutler PRIVATE -Wall -Wextra)
+# Warnings on our OWN translation units only. The Pico SDK / TinyUSB attach their
+# sources to this executable via INTERFACE libraries, so target_compile_options on
+# `dutler` would leak strict flags onto third-party code (which isn't clean under
+# them). Scope per-source instead. -Werror is opt-in (CI sets -DDUTLER_WERROR=ON)
+# so local dev builds stay lenient.
+option(DUTLER_WERROR "Treat compiler warnings as errors on DUTler's own sources" OFF)
+set(DUTLER_OWN_SOURCES
+    src/main.c src/usb_descriptors.c src/bridge.c src/outputs.c src/console.c
+    src/command.c src/settings.c src/settings_codec.c
+    src/util/crc32.c src/util/numparse.c src/util/debug.c)
+set(DUTLER_WARNINGS -Wall -Wextra -Wshadow -Wdouble-promotion -Wconversion)
+if(DUTLER_WERROR)
+    list(APPEND DUTLER_WARNINGS -Werror)
+endif()
+set_source_files_properties(${DUTLER_OWN_SOURCES}
+    PROPERTIES COMPILE_OPTIONS "${DUTLER_WARNINGS}")
 
 # This firmware does no floating-point. Drop printf's float/exponential support
 # so the double-precision soft-float runtime isn't dragged into the image.

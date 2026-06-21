@@ -7,7 +7,11 @@
 # With no PORT it auto-picks the highest-numbered CDC port (the debug log):
 #   macOS  /dev/cu.usbmodem*5   Linux  /dev/ttyACM2
 # (assumes only DUTler is attached; pass PORT explicitly otherwise).
-import glob, os, select, sys, termios
+import glob
+import os
+import select
+import sys
+import termios
 
 
 def pick_debug_port():

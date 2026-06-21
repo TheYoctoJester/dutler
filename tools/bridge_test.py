@@ -5,7 +5,11 @@
 # Loopback test for the UART bridge port (CDC0).
 # REQUIRES a jumper wire between GP0 (pin 1) and GP1 (pin 2).
 # Usage: python3 tools/bridge_test.py [/dev/cu.usbmodemXXXX]
-import os, sys, select, time, termios
+import os
+import sys
+import select
+import time
+import termios
 
 port = sys.argv[1] if len(sys.argv) > 1 else "/dev/cu.usbmodem1101"
 fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
@@ -25,8 +29,10 @@ def drain(timeout=0.5):
     while time.time() < end:
         r, _, _ = select.select([fd], [], [], 0.1)
         if r:
-            try: out += os.read(fd, 256)
-            except BlockingIOError: pass
+            try:
+                out += os.read(fd, 256)
+            except BlockingIOError:
+                pass
     return out
 
 drain()

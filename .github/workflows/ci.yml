@@ -9,6 +9,16 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least privilege: every job only needs to read the checked-out code.
+permissions:
+  contents: read
+
+# A newer push to the same ref cancels in-flight runs (saves minutes on rapid
+# pushes; never cancels a different branch/PR).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   format:
     name: clang-format
@@ -31,6 +41,43 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - run: tools/check_spdx.sh
 
+  lint:
+    name: Lint scripts (shellcheck + ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck $(git ls-files '*.sh')
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.x"
+      - name: ruff
+        # Pinned so CI matches local results (ruff's rule set evolves between releases).
+        run: |
+          pip install "ruff==0.15.18"
+          ruff check tools/*.py
+
+  cppcheck:
+    name: Static analysis (cppcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+          cppcheck --version
+      # Conservative enable set (no noisy "style"/"all"); inline suppressions allowed.
+      - run: >
+          cppcheck --enable=warning,performance,portability --inline-suppr
+          --suppress=missingIncludeSystem --error-exitcode=1 --quiet
+          -I include -I src src/
+
   test:
     name: Host unit tests
     runs-on: ubuntu-latest
@@ -43,9 +90,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build
 
+      # -Werror catches new warnings; sanitizers catch OOB / UB in the pure logic.
       - name: Build & run unit tests
         run: |
-          cmake -S tests -B build-tests -G Ninja
+          cmake -S tests -B build-tests -G Ninja -DDUTLER_WERROR=ON -DDUTLER_SANITIZE=ON
           cmake --build build-tests
           ctest --test-dir build-tests --output-on-failure
 
@@ -77,10 +125,15 @@ jobs:
       - name: Configure
         # Toolchain is on PATH (so no PICO_TOOLCHAIN_PATH needed); the SDK builds
         # picotool itself. env.sh isn't sourced — CI pins everything explicitly.
-        run: cmake -S . -B build -G Ninja -DPICO_SDK_PATH="$PICO_SDK_PATH"
+        # -Werror is CI-only (local dev builds stay lenient).
+        run: cmake -S . -B build -G Ninja -DPICO_SDK_PATH="$PICO_SDK_PATH" -DDUTLER_WERROR=ON
 
       - name: Build
         run: cmake --build build
+
+      - name: Firmware size
+        # Visibility into flash/RAM footprint on each build (RP2040 is constrained).
+        run: arm-none-eabi-size build/dutler.elf
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

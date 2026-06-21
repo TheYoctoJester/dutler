@@ -1,7 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Northern.tech AS
 # SPDX-License-Identifier: Apache-2.0
 
-import os, sys, select, time, termios
+import os
+import sys
+import select
+import time
+import termios
 
 port = sys.argv[1] if len(sys.argv) > 1 else "/dev/cu.usbmodem1103"
 fd = os.open(port, os.O_RDWR | os.O_NOCTTY | os.O_NONBLOCK)
@@ -17,8 +21,10 @@ def drain(timeout=0.4):
     while time.time() < end:
         r,_,_ = select.select([fd], [], [], 0.1)
         if r:
-            try: out += os.read(fd, 256)
-            except BlockingIOError: pass
+            try:
+                out += os.read(fd, 256)
+            except BlockingIOError:
+                pass
     return out.decode(errors="replace")
 
 def send(cmd):

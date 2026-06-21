@@ -9,6 +9,7 @@
 # first flash, or a wedged board), fall back to the manual BOOTSEL button.
 set -euo pipefail
 cd "$(dirname "$0")"
+# shellcheck disable=SC1091  # env.sh is a sibling, resolved at runtime
 source ./env.sh
 
 cmake --build build

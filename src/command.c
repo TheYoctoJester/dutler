@@ -29,9 +29,9 @@ static void print_status(void) {
         const char *nm = g_settings.out_name[i];
         const char *st = outputs_get(i) ? "on" : "off";
         if (nm[0])
-            snprintf(msg, sizeof(msg), "out %u (%s) %s\r\n", i + 1, nm, st);
+            snprintf(msg, sizeof(msg), "out %u (%s) %s\r\n", (unsigned)(i + 1), nm, st);
         else
-            snprintf(msg, sizeof(msg), "out %u %s\r\n", i + 1, st);
+            snprintf(msg, sizeof(msg), "out %u %s\r\n", (unsigned)(i + 1), st);
         console_print(msg);
     }
     char pc = g_settings.parity == 1 ? 'O' : g_settings.parity == 2 ? 'E' : 'N';

@@ -45,6 +45,30 @@ affects device behaviour, **verify it on real hardware** and say so in the PR.
   (`#` comment for shell/CMake/Python.) Per the CLA, the repository consolidates copyright notices
   under Northern.tech AS; you keep authorship credit via git history.
 
+## Tests & CI checks
+
+Every push and PR runs CI (`.github/workflows/ci.yml`): clang-format, SPDX headers, script
+linting (shellcheck + ruff), `cppcheck` static analysis, host unit tests (built `-Werror` and
+run under AddressSanitizer + UBSan), and the firmware build (`-Werror`). To reproduce locally:
+
+```sh
+# host unit tests, as CI runs them (warnings = errors, sanitized)
+cmake -S tests -B build-tests -G Ninja -DDUTLER_WERROR=ON -DDUTLER_SANITIZE=ON
+cmake --build build-tests && ctest --test-dir build-tests --output-on-failure
+
+# firmware build with warnings-as-errors
+cmake -S . -B build -G Ninja -DPICO_SDK_PATH="$PICO_SDK_PATH" -DDUTLER_WERROR=ON && cmake --build build
+
+# the linters (CI pins ruff; clang-format pinned to 22.x)
+shellcheck $(git ls-files '*.sh')
+ruff check tools/*.py
+cppcheck --enable=warning,performance,portability --inline-suppr \
+  --suppress=missingIncludeSystem --error-exitcode=1 -I include -I src src/
+```
+
+`-DDUTLER_WERROR` / `-DDUTLER_SANITIZE` default **off**, so a plain local build stays lenient —
+CI turns them on. New pure logic should come with a test in `tests/test_main.c`.
+
 ## Commits & pull requests
 
 - Write clear, imperative commit messages explaining **why**, not just what.

@@ -18,8 +18,23 @@ add_executable(unit
     ../src/settings_codec.c
 )
 target_include_directories(unit PRIVATE ../src ../include)
+
+# -Werror and sanitizers are opt-in so local `cmake -S tests` stays friendly;
+# CI turns both on (see .github/workflows/ci.yml).
+option(DUTLER_WERROR "Treat compiler warnings as errors" OFF)
+option(DUTLER_SANITIZE "Build the tests with AddressSanitizer + UBSan" OFF)
+
 if(NOT MSVC)
-    target_compile_options(unit PRIVATE -Wall -Wextra)
+    set(test_warnings -Wall -Wextra -Wshadow -Wdouble-promotion -Wconversion)
+    if(DUTLER_WERROR)
+        list(APPEND test_warnings -Werror)
+    endif()
+    target_compile_options(unit PRIVATE ${test_warnings})
+endif()
+
+if(DUTLER_SANITIZE)
+    target_compile_options(unit PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_link_options(unit PRIVATE -fsanitize=address,undefined)
 endif()
 
 add_test(NAME unit COMMAND unit)
