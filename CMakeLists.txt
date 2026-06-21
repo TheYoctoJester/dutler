@@ -32,6 +32,9 @@ target_include_directories(dutler PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
+# Warnings on our own sources only (PRIVATE — not the Pico SDK / TinyUSB libs).
+target_compile_options(dutler PRIVATE -Wall -Wextra)
+
 # This firmware does no floating-point. Drop printf's float/exponential support
 # so the double-precision soft-float runtime isn't dragged into the image.
 target_compile_definitions(dutler PRIVATE
