@@ -8,9 +8,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "crc32.h"
-#include "parse.h"
 #include "settings_codec.h"
+#include "util/crc32.h"
+#include "util/numparse.h"
 
 static int checks = 0;
 static int failures = 0;

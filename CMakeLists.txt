@@ -52,11 +52,11 @@ add_executable(dutler
     src/outputs.c
     src/console.c
     src/command.c
-    src/debug.c
     src/settings.c
     src/settings_codec.c
-    src/crc32.c
-    src/parse.c
+    src/util/crc32.c
+    src/util/numparse.c
+    src/util/debug.c
 )
 
 target_include_directories(dutler PRIVATE

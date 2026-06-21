@@ -7,9 +7,9 @@
 #include <string.h>
 
 #include "config.h"
-#include "parse.h"
 #include "pico/stdlib.h"
 #include "settings.h"
+#include "util/numparse.h"
 
 static const uint8_t out_pins[OUT_COUNT] = OUT_PINS;
 static bool out_state[OUT_COUNT];
