@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Northern.tech-Commercial
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# C/headers are also governed by .clang-format (the authority for code style).
+
+[*.{yml,yaml}]
+indent_size = 2
+
+[*.md]
+# Markdown can use two trailing spaces as a hard line break.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab
