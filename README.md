@@ -93,14 +93,19 @@ help                        show command help
 
 ## Persistent settings
 
-Relay **names** and the **bridge boot UART config** are stored in the last 4 KB sector of the
-Pico's flash. `set …`/`name …` change them in RAM (shown as "unsaved changes" in `status`);
-`save` writes them to flash. They survive power cycles *and* normal firmware reflashes (the
-UF2 only overwrites the program region, not the top sector). A version+CRC header means a
-blank/garbage sector falls back to safe defaults. The record is **versioned** with a
-migration dispatch in `src/settings.c` — that file's header documents the append-only rules
-and includes a worked migrator template, so a future layout change can upgrade old records
-in place instead of discarding them.
+Relay **names** and the **bridge boot UART config** are stored in flash. `set …`/`name …`
+change them in RAM (shown as "unsaved changes" in `status`); `save` writes them. They survive
+power cycles *and* normal firmware reflashes (the UF2 only overwrites the program region, not
+the settings sectors).
+
+Storage uses an **A/B (ping-pong) scheme** across the last two 4 KB sectors: each record
+carries a monotonic sequence number, `save` writes the *inactive* slot and verifies it before
+it counts, and load picks the valid slot with the highest sequence. The active slot is never
+erased, so a **failed or power-interrupted save cannot lose the last good config** — load just
+falls back to the older slot (the half-written one fails its CRC). A blank/garbage pair falls
+back to safe defaults. The record is **versioned**; `src/settings.c` documents the append-only
+evolution rules and migrates the older format in place (v1 single-slot records are upgraded to
+v2 A/B on first boot, preserving names + baud).
 
 **Relays themselves always boot OFF** — their state is deliberately not persisted, so a power
 blip can never silently re-energize a load. Implemented in `src/settings.c`

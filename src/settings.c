@@ -13,69 +13,57 @@ settings_t g_settings;
 
 /*
  * ============================================================================
- *  ON-FLASH SETTINGS FORMAT  —  READ THIS BEFORE CHANGING settings_t
+ *  ON-FLASH SETTINGS  —  A/B (ping-pong), power-loss & wear safe
  * ============================================================================
  *
- * One record is stored in the reserved flash sector, laid out by byte offset:
+ * Two flash sectors (the last two 4 KB sectors) act as alternating slots.
+ * Each record is laid out by byte offset:
  *
- *     +--------+---------+----------------------------+-------+
- *     | magic  | version |   payload (settings_t)     |  crc  |
- *     | u32 @0 | u32 @4  |   P bytes @8               | u32   |
- *     +--------+---------+----------------------------+-------+
- *                                                       @ 8+P
+ *   +--------+---------+--------+----------------------------+-------+
+ *   | magic  | version |  seq   |   payload (settings_t)     |  crc  |
+ *   | u32 @0 | u32 @4  | u32 @8 |   P bytes @12              | u32   |
+ *   +--------+---------+--------+----------------------------+-------+
  *
- *   magic    SETTINGS_MAGIC. FROZEN forever; identifies "our" record.
- *   version  SETTINGS_VERSION at write time. Its offset (4) and width (u32)
- *            are FROZEN forever so ANY future build can read it first and then
- *            decide how to interpret the payload.
- *   payload  The settings_t struct exactly as it existed for `version`.
- *            Its size P therefore differs between versions.
- *   crc      CRC32 over bytes [0 .. 8+P). Sits right after the payload, so its
- *            offset depends on that version's P.
+ *   magic    SETTINGS_MAGIC, frozen, identifies "our" record.
+ *   version  SETTINGS_VERSION. Offset (4) and width (u32) frozen forever so any
+ *            build can read it first and pick the right layout.
+ *   seq      monotonic counter. load() picks the valid slot with the highest seq.
+ *   crc      CRC32 over [magic .. end of payload].
  *
- * The reader keys off `version`: the current version is loaded directly; an
- * older known version is MIGRATED to the current layout and re-saved; anything
- * else (bad magic, bad CRC, unknown version) falls back to safe defaults.
+ * save() always writes the *inactive* slot and bumps seq, then verifies before
+ * declaring success. The active slot is never erased — so a failed or
+ * power-interrupted save cannot lose the last good config: load() falls back to
+ * the older slot (the half-written one fails its CRC and is ignored).
  *
- * ----------------------------------------------------------------------------
- *  HOW TO EVOLVE THE LAYOUT  (follow every step when you change settings_t)
- * ----------------------------------------------------------------------------
- *  1. PREFER APPEND-ONLY. Add new fields at the END of settings_t (in
- *     settings.h) and give each a sensible default in load_defaults(). Do NOT
- *     reorder, resize, remove, or repurpose an existing field: old records were
- *     CRC'd over the old byte layout and must remain interpretable as-is.
+ * Legacy: version 1 was a single record (no seq, payload @8) in the last sector.
+ * If no valid v2 record exists, load() reads a v1 record from there and upgrades
+ * it to v2 (preserving names + baud), then re-saves.
  *
- *  2. FREEZE the outgoing layout as a snapshot struct, e.g. copy the current
- *     settings_t body into a new `settings_v<N>_t` below. A frozen
- *     settings_v<N>_t must NEVER be edited again.
- *
- *  3. BUMP SETTINGS_VERSION (e.g. 1 -> 2).
- *
- *  4. ADD a migrator (see the worked migrate_v1() template below) and register
- *     it as a `case` in settings_load(). For a pure append-only change the
- *     migrator just copies the old fields and lets load_defaults() populate the
- *     new tail.
- *
- *  5. UPDATE the _Static_assert so it compares the live settings_t against the
- *     NEWEST frozen snapshot — that guarantees the live struct and the latest
- *     on-flash layout can never silently diverge.
+ * Evolving settings_t (the payload) is independent of this A/B framing: same
+ * rules as before — append-only fields with defaults, freeze the old layout as
+ * settings_v<N>_t, bump SETTINGS_VERSION, migrate. See the snapshot + asserts.
  * ============================================================================
  */
 
-#define SETTINGS_MAGIC 0x52454C31u  // "REL1" — FROZEN, never change
-#define SETTINGS_VERSION 1u         // bump on every settings_t layout change
+#define SETTINGS_MAGIC 0x52454C31u  // "REL1" — frozen
+#define SETTINGS_VERSION 2u         // 2 = A/B with seq; 1 = legacy single slot
 
-// Reserve the very last 4 KB sector of flash; the program lives at the start
-// and is far smaller, so this never collides.
-#define SETTINGS_OFFSET (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE)
+// Record field offsets. magic/version are frozen across versions.
+#define OFF_MAGIC 0u
+#define OFF_VERSION 4u
+#define OFF_SEQ 8u           // v2 only
+#define OFF_PAYLOAD_V2 12u   // v2 payload starts here
+#define OFF_PAYLOAD_V1 8u    // v1 payload started right after version
 
-#define HDR_BYTES 8u   // magic (u32) + version (u32), FROZEN
-#define CRC_BYTES 4u
+// Two alternating slots: the last two sectors of flash. The v1 record lived in
+// the very last sector, which is slot B here, so legacy data is found in place.
+#define SLOT_A_OFFSET (PICO_FLASH_SIZE_BYTES - 2u * FLASH_SECTOR_SIZE)
+#define SLOT_B_OFFSET (PICO_FLASH_SIZE_BYTES - 1u * FLASH_SECTOR_SIZE)
+#define LEGACY_OFFSET SLOT_B_OFFSET
 
 // ---------------------------------------------------------------------------
-//  Frozen per-version payload snapshots. NEVER edit an existing settings_v<N>_t;
-//  add a new one when you bump the version. v1 is the first released layout and
-//  is byte-identical to today's live settings_t.
+//  Frozen per-version payload snapshots. NEVER edit an existing settings_v<N>_t.
+//  The live settings_t is byte-identical to the newest snapshot (asserted).
 // ---------------------------------------------------------------------------
 typedef struct {
     uint32_t baud;
@@ -86,29 +74,26 @@ typedef struct {
     uint8_t reserved;
 } settings_v1_t;
 
-// The live settings_t must always equal the NEWEST frozen snapshot. When you
-// add settings_v2_t, change this assert to compare against settings_v2_t.
 _Static_assert(sizeof(settings_t) == sizeof(settings_v1_t),
                "live settings_t diverged from the latest frozen snapshot: "
                "snapshot the old layout as settings_v<N>_t and bump SETTINGS_VERSION");
 
-// Enforce the on-flash layout: the struct size must equal the exact sum of its
-// fields (i.e. NO implicit/compiler padding), and the fields must sit at the
-// offsets the stored records were written with. Any drift breaks the build
-// instead of silently mis-reading flash on a future toolchain/edit.
+// No implicit padding, fields at their stored offsets.
 _Static_assert(sizeof(settings_v1_t) ==
-                   4u /*baud*/ + 1u /*data_bits*/ + 1u /*parity*/ +
-                       1u /*stop_bits*/ + (RELAY_COUNT * RELAY_NAME_MAX) +
-                       1u /*reserved*/,
-               "implicit padding crept into settings_t: reorder fields or add "
-               "explicit reserved bytes to remove the gap");
+                   4u + 1u + 1u + 1u + (RELAY_COUNT * RELAY_NAME_MAX) + 1u,
+               "implicit padding crept into settings_t");
 _Static_assert(offsetof(settings_v1_t, baud) == 0, "baud must stay at offset 0");
 _Static_assert(offsetof(settings_v1_t, relay_name) == 7,
                "relay_name offset changed: this breaks every stored record");
 
-// The whole record must fit in a single programmable flash page.
-_Static_assert(HDR_BYTES + sizeof(settings_t) + CRC_BYTES <= FLASH_PAGE_SIZE,
+// The largest record (v2) must fit in one programmable flash page.
+_Static_assert(OFF_PAYLOAD_V2 + sizeof(settings_t) + 4u <= FLASH_PAGE_SIZE,
                "settings record exceeds one flash page");
+
+// 0 = slot A, 1 = slot B. Tracks which slot holds the freshest record so save()
+// writes the other one. g_seq is that record's sequence number.
+static uint8_t active_slot;
+static uint32_t g_seq;
 
 static uint32_t crc32(const void *data, size_t len) {
     const uint8_t *p = (const uint8_t *)data;
@@ -121,6 +106,20 @@ static uint32_t crc32(const void *data, size_t len) {
     return ~crc;
 }
 
+static uint32_t rd_u32(const uint8_t *base, size_t off) {
+    uint32_t v;
+    memcpy(&v, base + off, sizeof(v));
+    return v;
+}
+
+// Force every relay name to be NUL-terminated. Defense-in-depth: the write path
+// always terminates and the CRC guards corruption, but downstream strlen/strcmp/
+// "%s" must never over-read past a name field. Call after any load.
+static void terminate_names(void) {
+    for (int i = 0; i < RELAY_COUNT; i++)
+        g_settings.relay_name[i][RELAY_NAME_MAX - 1] = '\0';
+}
+
 static void load_defaults(void) {
     memset(&g_settings, 0, sizeof(g_settings));
     g_settings.baud = BRIDGE_INIT_BAUD;
@@ -130,113 +129,115 @@ static void load_defaults(void) {
     // relay_name[] left as empty strings
 }
 
-// Validate the CRC of a record whose payload is `payload_size` bytes long.
-static bool record_crc_ok(const uint8_t *base, size_t payload_size) {
-    uint32_t stored;
-    memcpy(&stored, base + HDR_BYTES + payload_size, CRC_BYTES);
-    return crc32(base, HDR_BYTES + payload_size) == stored;
-}
-
-// Force every relay name to be NUL-terminated. Defense-in-depth: the write path
-// always terminates and the CRC guards corruption, but downstream strlen/strcmp/
-// "%s" must never be able to over-read past a name field. Call after any load.
-static void terminate_names(void) {
-    for (int i = 0; i < RELAY_COUNT; i++)
-        g_settings.relay_name[i][RELAY_NAME_MAX - 1] = '\0';
-}
-
-// Load a record written by the CURRENT version directly into g_settings.
-static bool load_current(const uint8_t *base) {
-    if (!record_crc_ok(base, sizeof(settings_t))) return false;
-    memcpy(&g_settings, base + HDR_BYTES, sizeof(settings_t));
-    terminate_names();
+// Read a current-version (v2) record from a slot. On success, copies the payload
+// into g_settings and outputs its sequence number.
+static bool read_v2(const uint8_t *base, uint32_t *seq_out) {
+    if (rd_u32(base, OFF_MAGIC) != SETTINGS_MAGIC) return false;
+    if (rd_u32(base, OFF_VERSION) != SETTINGS_VERSION) return false;
+    size_t crc_off = OFF_PAYLOAD_V2 + sizeof(settings_t);
+    if (crc32(base, crc_off) != rd_u32(base, crc_off)) return false;
+    *seq_out = rd_u32(base, OFF_SEQ);
+    memcpy(&g_settings, base + OFF_PAYLOAD_V2, sizeof(settings_t));
     return true;
 }
 
-/*
- * ---------------------------------------------------------------------------
- *  MIGRATOR TEMPLATE — keep as the model for real migrators.
- *
- *  When SETTINGS_VERSION becomes 2 and settings_t has grown (append-only),
- *  uncomment and adapt this, then add `case 1:` to settings_load():
- *
- *  static bool migrate_v1(const uint8_t *base) {
- *      if (!record_crc_ok(base, sizeof(settings_v1_t))) return false;  // bad v1
- *      settings_v1_t old;
- *      memcpy(&old, base + HDR_BYTES, sizeof(old));
- *      load_defaults();                       // new trailing fields -> defaults
- *      g_settings.baud      = old.baud;       // carry forward every old field
- *      g_settings.data_bits = old.data_bits;
- *      g_settings.parity    = old.parity;
- *      g_settings.stop_bits = old.stop_bits;
- *      memcpy(g_settings.relay_name, old.relay_name, sizeof(old.relay_name));
- *      terminate_names();                     // never trust loaded names
- *      return true;
- *  }
- * ---------------------------------------------------------------------------
- */
+// Read a legacy (v1) record. Same payload struct, no seq, payload at offset 8.
+static bool read_v1(const uint8_t *base) {
+    if (rd_u32(base, OFF_MAGIC) != SETTINGS_MAGIC) return false;
+    if (rd_u32(base, OFF_VERSION) != 1u) return false;
+    size_t crc_off = OFF_PAYLOAD_V1 + sizeof(settings_t);
+    if (crc32(base, crc_off) != rd_u32(base, crc_off)) return false;
+    memcpy(&g_settings, base + OFF_PAYLOAD_V1, sizeof(settings_t));
+    return true;
+}
 
 void settings_load(void) {
-    const uint8_t *base = (const uint8_t *)(XIP_BASE + SETTINGS_OFFSET);
+    const uint8_t *a = (const uint8_t *)(XIP_BASE + SLOT_A_OFFSET);
+    const uint8_t *b = (const uint8_t *)(XIP_BASE + SLOT_B_OFFSET);
 
-    uint32_t magic, version;
-    memcpy(&magic, base, sizeof(magic));
-    memcpy(&version, base + 4, sizeof(version));
+    bool have = false;
+    uint32_t best = 0, seq;
+    settings_t pick;
 
-    if (magic == SETTINGS_MAGIC) {
-        switch (version) {
-            case SETTINGS_VERSION:
-                if (load_current(base)) return;
-                break;
-            // Add older versions here, newest-first, e.g.:
-            // case 1:
-            //     if (migrate_v1(base)) { settings_save(); return; }
-            //     break;
-            default:
-                break;  // unknown/newer version -> defaults
-        }
+    if (read_v2(a, &seq)) {
+        pick = g_settings;
+        best = seq;
+        active_slot = 0;
+        have = true;
+    }
+    if (read_v2(b, &seq) && (!have || seq > best)) {
+        pick = g_settings;  // g_settings was overwritten by read_v2(b)
+        best = seq;
+        active_slot = 1;
+        have = true;
     }
 
-    load_defaults();  // absent, corrupt, or unmigratable -> safe defaults
+    if (have) {
+        g_settings = pick;  // ensure the winning slot's payload is the one kept
+        g_seq = best;
+        terminate_names();
+        return;
+    }
+
+    // No valid v2 record: upgrade a legacy v1 record in place if present.
+    if (read_v1((const uint8_t *)(XIP_BASE + LEGACY_OFFSET))) {
+        terminate_names();
+        g_seq = 0;
+        active_slot = 1;     // pretend B is active so the upgrade writes slot A
+        settings_save();     // persist as v2 (best-effort; re-tried next boot)
+        return;
+    }
+
+    load_defaults();
+    g_seq = 0;
+    active_slot = 1;  // first save targets slot A
 }
 
 bool settings_save(void) {
-    // Build the record at explicit offsets so the byte layout is independent of
-    // C struct padding around the header/crc (the payload keeps its own layout).
+    uint8_t target = active_slot ^ 1u;  // write the *inactive* slot
+    uint32_t off = target ? SLOT_B_OFFSET : SLOT_A_OFFSET;
+    uint32_t seq = g_seq + 1u;
+
     uint8_t page[FLASH_PAGE_SIZE];
     memset(page, 0xFF, sizeof(page));
 
-    uint32_t magic = SETTINGS_MAGIC;
-    uint32_t version = SETTINGS_VERSION;
-    size_t off = 0;
-    memcpy(page + off, &magic, sizeof(magic));
-    off += sizeof(magic);
-    memcpy(page + off, &version, sizeof(version));
-    off += sizeof(version);
-    memcpy(page + off, &g_settings, sizeof(g_settings));
-    off += sizeof(g_settings);
-    uint32_t crc = crc32(page, off);
-    memcpy(page + off, &crc, sizeof(crc));
+    uint32_t magic = SETTINGS_MAGIC, version = SETTINGS_VERSION;
+    memcpy(page + OFF_MAGIC, &magic, sizeof(magic));
+    memcpy(page + OFF_VERSION, &version, sizeof(version));
+    memcpy(page + OFF_SEQ, &seq, sizeof(seq));
+    memcpy(page + OFF_PAYLOAD_V2, &g_settings, sizeof(g_settings));
+    size_t crc_off = OFF_PAYLOAD_V2 + sizeof(g_settings);
+    uint32_t crc = crc32(page, crc_off);
+    memcpy(page + crc_off, &crc, sizeof(crc));
 
-    // Give the erase/program the full watchdog budget: it runs with interrupts
-    // masked and can take hundreds of ms (sector erase), feeding nothing.
+    // Full watchdog budget for the interrupts-masked erase/program.
     watchdog_update();
-
-    // Single core here, so masking interrupts is sufficient to make the
-    // erase/program safe (no code runs from flash meanwhile).
     uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(SETTINGS_OFFSET, FLASH_SECTOR_SIZE);
-    flash_range_program(SETTINGS_OFFSET, page, FLASH_PAGE_SIZE);
+    flash_range_erase(off, FLASH_SECTOR_SIZE);
+    flash_range_program(off, page, FLASH_PAGE_SIZE);
     restore_interrupts(ints);
 
-    const uint8_t *base = (const uint8_t *)(XIP_BASE + SETTINGS_OFFSET);
-    return record_crc_ok(base, sizeof(settings_t));
+    // Verify the freshly written slot before it counts. If it fails, the other
+    // (still-intact) slot remains the freshest, so no config is lost.
+    uint32_t chk_seq;
+    settings_t keep = g_settings;
+    bool ok = read_v2((const uint8_t *)(XIP_BASE + off), &chk_seq) && chk_seq == seq;
+    g_settings = keep;  // read_v2 overwrote g_settings during verify; restore it
+    if (!ok) return false;
+
+    g_seq = seq;
+    active_slot = target;
+    return true;
 }
 
 void settings_reset(void) {
-    // Erase the record so the next boot also sees a blank sector -> defaults.
+    // Erase both slots so the next boot finds no record and uses defaults.
+    watchdog_update();
     uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(SETTINGS_OFFSET, FLASH_SECTOR_SIZE);
+    flash_range_erase(SLOT_A_OFFSET, FLASH_SECTOR_SIZE);
+    flash_range_erase(SLOT_B_OFFSET, FLASH_SECTOR_SIZE);
     restore_interrupts(ints);
     load_defaults();
+    g_seq = 0;
+    active_slot = 1;  // next save targets slot A
 }
