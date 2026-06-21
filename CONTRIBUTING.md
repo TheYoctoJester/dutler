@@ -35,8 +35,9 @@ affects device behaviour, **verify it on real hardware** and say so in the PR.
 
 ## Coding style
 
-- C11, **match the surrounding style** (it's consistent — 4-space indent, braces, naming). If in
-  doubt, mimic the nearest existing code.
+- C11, formatted with **clang-format** — run `clang-format -i` on your changed files (the repo
+  has a `.clang-format`; CI checks it with clang-format **22.x**, e.g.
+  `pip install "clang-format==22.1.5"`).
 - Keep it small and explicit; avoid pulling in new dependencies or floating point.
 - **Every source file carries an SPDX header** — copy the existing two lines onto any new file:
 

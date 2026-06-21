@@ -24,7 +24,8 @@ def drain(fd, t=0.4):
             except BlockingIOError: pass
     return out
 
-for port in sorted(glob.glob("/dev/cu.usbmodem*")):
+# macOS: /dev/cu.usbmodem*   Linux: /dev/ttyACM*
+for port in sorted(glob.glob("/dev/cu.usbmodem*")) + sorted(glob.glob("/dev/ttyACM*")):
     try:
         fd = raw(port)
     except OSError:

@@ -39,8 +39,16 @@ The firmware makes a stock Pico enumerate as **three USB serial ports**:
 | **CDC1 — "Relay Control"** | Newline-terminated commands to switch the DUT control outputs — a power relay plus MOSFET strap/reset drivers. |
 | **CDC2 — "Debug Log"** | Read-only firmware log stream (open it to start receiving; output is dropped when nobody is listening). |
 
-On macOS these enumerate as three ports, e.g. `usbmodemXXX1` (bridge), `usbmodemXXX3`
-(control), `usbmodemXXX5` (debug log).
+They enumerate as three serial ports, in this order — **bridge, control, debug log**:
+
+- **Linux:** `/dev/ttyACM0`, `/dev/ttyACM1`, `/dev/ttyACM2`. For access without `sudo`, add
+  yourself to the `dialout` group once: `sudo usermod -aG dialout "$USER"` (then re-login).
+  Open a port with `tio`, `minicom`, or `screen`.
+- **macOS:** `/dev/cu.usbmodem*` — `…1` (bridge), `…3` (control), `…5` (debug log). Open with
+  `screen`.
+
+The examples below use the macOS `cu.usbmodem*` names; on Linux substitute the matching
+`/dev/ttyACM*`.
 
 ## Requirements
 
@@ -83,9 +91,10 @@ cmake --build build
 ./flash.sh                              # or drag build/dutler.uf2 onto the RPI-RP2 drive
 
 # use it: three USB serial ports appear
-ls /dev/cu.usbmodem*                    # bridge (…1), control (…3), debug log (…5)
-screen /dev/cu.usbmodemXXXX1 115200     # the DUT serial console
-#   …then open the control port (…3) and type 'help' for relay/strap/reset commands
+ls /dev/cu.usbmodem*                    # macOS: …1 bridge, …3 control, …5 debug
+# ls /dev/ttyACM*                       # Linux:  ttyACM0/1/2 = bridge/control/debug
+screen /dev/cu.usbmodemXXXX1 115200     # the DUT serial console (Linux: tio/minicom/screen on ttyACM0)
+#   …then open the control port and type 'help' for relay/strap/reset commands
 ```
 
 See **Build**, **Flash** and **Test** below for the details, and **Wiring** for pin assignments.
