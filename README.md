@@ -1,5 +1,10 @@
 # DUTler 🎩
 
+[![License: GPL-3.0-or-later OR Commercial](https://img.shields.io/badge/license-GPL--3.0--or--later%20OR%20Commercial-blue.svg)](LICENSE)
+[![Platform: RP2040](https://img.shields.io/badge/platform-RP2040-8a2be2.svg)](https://www.raspberrypi.com/products/raspberry-pi-pico/)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome%20(CLA)-brightgreen.svg)](CONTRIBUTING.md)
+
 > **A bench butler for your Device Under Test.**
 > Sponsored by [Northern.tech](https://northern.tech) as part of the
 > [Mender.io](https://mender.io) community engagement.
@@ -265,7 +270,9 @@ interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Because DUTler is
 dual-licensed, contributions require a DCO sign-off (`git commit -s`) **and** agreement to the
 [Contributor License Agreement](CLA.md), which lets Northern.tech offer your contribution under
-both the GPL and the commercial license.
+both the GPL and the commercial license. Please follow the
+[Code of Conduct](CODE_OF_CONDUCT.md), and report security issues privately per
+[`SECURITY.md`](SECURITY.md).
 
 ## License
 
