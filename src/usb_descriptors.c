@@ -37,9 +37,7 @@ static const tusb_desc_device_t desc_device = {
     .bNumConfigurations = 0x01,
 };
 
-uint8_t const *tud_descriptor_device_cb(void) {
-    return (uint8_t const *)&desc_device;
-}
+uint8_t const *tud_descriptor_device_cb(void) { return (uint8_t const *)&desc_device; }
 
 // ---- Configuration descriptor ----
 enum {
@@ -72,16 +70,13 @@ static uint8_t const desc_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
 
     // CDC 0 — UART bridge (interface string index 4)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT,
-                       EPNUM_CDC_0_IN, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
 
     // CDC 1 — relay control (interface string index 5)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT,
-                       EPNUM_CDC_1_IN, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
 
     // CDC 2 — debug log (interface string index 6)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, 6, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT,
-                       EPNUM_CDC_2_IN, 64),
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, 6, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT, EPNUM_CDC_2_IN, 64),
 };
 
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {

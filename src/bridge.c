@@ -126,8 +126,7 @@ void bridge_task(void) {
     static absolute_time_t drops_next_report = {0};  // 0 -> first report is immediate
     uint32_t drops = rx_drops;
     if (drops != drops_reported && time_reached(drops_next_report)) {
-        dbg_printf("bridge: RX overflow, %lu byte(s) dropped total\r\n",
-                   (unsigned long)drops);
+        dbg_printf("bridge: RX overflow, %lu byte(s) dropped total\r\n", (unsigned long)drops);
         drops_reported = drops;
         drops_next_report = make_timeout_time_ms(500);
     }
@@ -161,6 +160,6 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *coding) {
     uart_set_format(BRIDGE_UART, data_bits, stop_bits, parity);
 
     char pc = (parity == UART_PARITY_ODD) ? 'O' : (parity == UART_PARITY_EVEN) ? 'E' : 'N';
-    dbg_printf("bridge: line coding %lu baud %u%c%u\r\n",
-               (unsigned long)coding->bit_rate, data_bits, pc, stop_bits);
+    dbg_printf("bridge: line coding %lu baud %u%c%u\r\n", (unsigned long)coding->bit_rate,
+               data_bits, pc, stop_bits);
 }

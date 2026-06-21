@@ -17,15 +17,15 @@
 // (append-only) and follow the versioning/migration steps documented at the top
 // of settings.c — reordering or resizing existing fields breaks stored records.
 typedef struct {
-    uint32_t baud;       // bridge UART boot baud rate
-    uint8_t data_bits;   // 5..8
-    uint8_t parity;      // 0 = none, 1 = odd, 2 = even
-    uint8_t stop_bits;   // 1 or 2
+    uint32_t baud;                                 // bridge UART boot baud rate
+    uint8_t data_bits;                             // 5..8
+    uint8_t parity;                                // 0 = none, 1 = odd, 2 = even
+    uint8_t stop_bits;                             // 1 or 2
     char relay_name[RELAY_COUNT][RELAY_NAME_MAX];  // "" = unnamed
-    uint8_t reserved;    // explicit trailing pad: keeps the layout free of any
-                         // implicit padding (enforced by static asserts in
-                         // settings.c). Was the compiler's pad byte before;
-                         // same offset, so stored records stay compatible.
+    uint8_t reserved;  // explicit trailing pad: keeps the layout free of any
+                       // implicit padding (enforced by static asserts in
+                       // settings.c). Was the compiler's pad byte before;
+                       // same offset, so stored records stay compatible.
 } settings_t;
 
 extern settings_t g_settings;

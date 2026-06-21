@@ -15,13 +15,13 @@
 static int checks = 0;
 static int failures = 0;
 
-#define CHECK(cond)                                                       \
-    do {                                                                  \
-        checks++;                                                         \
-        if (!(cond)) {                                                    \
-            failures++;                                                   \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);       \
-        }                                                                 \
+#define CHECK(cond)                                                \
+    do {                                                           \
+        checks++;                                                  \
+        if (!(cond)) {                                             \
+            failures++;                                            \
+            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+        }                                                          \
     } while (0)
 
 static void test_crc32(void) {
@@ -40,9 +40,9 @@ static void test_parse_u32(void) {
     CHECK(!parse_u32("", &v));
     CHECK(!parse_u32("12x", &v));
     CHECK(!parse_u32("1.5", &v));
-    CHECK(!parse_u32("+5", &v));   // leading sign
+    CHECK(!parse_u32("+5", &v));  // leading sign
     CHECK(!parse_u32("-1", &v));
-    CHECK(!parse_u32(" 5", &v));   // leading space
+    CHECK(!parse_u32(" 5", &v));    // leading space
     CHECK(!parse_u32("0x10", &v));  // base-10 only
     CHECK(!parse_u32(NULL, &v));
 }

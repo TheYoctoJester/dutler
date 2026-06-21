@@ -27,8 +27,8 @@ extern "C" {
 #endif
 
 // Device mode, full speed on root hub port 0.
-#define CFG_TUD_ENABLED       1
-#define CFG_TUD_MAX_SPEED     OPT_MODE_FULL_SPEED
+#define CFG_TUD_ENABLED 1
+#define CFG_TUD_MAX_SPEED OPT_MODE_FULL_SPEED
 // Required by the no-argument tusb_init() form.
 #define CFG_TUSB_RHPORT0_MODE (OPT_MODE_DEVICE | OPT_MODE_FULL_SPEED)
 
@@ -44,10 +44,10 @@ extern "C" {
 #define CFG_TUD_ENDPOINT0_SIZE 64
 
 // ---- Enabled device classes ----
-#define CFG_TUD_CDC    3  // three CDC-ACM ports (bridge + relay control + debug log)
-#define CFG_TUD_MSC    0
-#define CFG_TUD_HID    0
-#define CFG_TUD_MIDI   0
+#define CFG_TUD_CDC 3  // three CDC-ACM ports (bridge + relay control + debug log)
+#define CFG_TUD_MSC 0
+#define CFG_TUD_HID 0
+#define CFG_TUD_MIDI 0
 #define CFG_TUD_VENDOR 0
 
 // ---- CDC FIFO sizes ----
