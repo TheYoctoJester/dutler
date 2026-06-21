@@ -1,4 +1,14 @@
-# USB-UART + Relay Adapter (Raspberry Pi Pico / RP2040)
+# DUTler 🎩
+
+**A bench butler for your Device Under Test.** DUTler is open-source firmware for a Raspberry
+Pi Pico (RP2040) that turns a ~$4 board into a sidecar/companion for OS-level integration work —
+the kind of bring-up, update and recovery loops you hit with **Mender + Yocto** (but it's not
+tied to either). It hands you the two things you always reach for at a test bench over a single
+USB cable: a **serial console** to the DUT, and a **power/GPIO switch** to cycle or recover it
+when an image bricks it mid-update — plus a separate firmware **debug log**.
+
+The name is *DUT* (Device Under Test) + *butler*: it quietly attends your board, serves up the
+console, and flips the power when asked.
 
 Firmware that makes a stock Pico enumerate as **two USB serial ports**:
 
@@ -135,20 +145,27 @@ and `status` reports it. Relay outputs always come up OFF after any reset.
 ## Layout
 
 ```
-usb-uart-relay/
+DUTler/
+├── LICENSE                # firmware license: GPL-3.0-or-later
 ├── env.sh                 # self-contained build environment (source before building)
 ├── flash.sh               # build + picotool load
 ├── CMakeLists.txt
 ├── pico_sdk_import.cmake
 ├── include/config.h       # pins, relay count/polarity, UART, USB IDs — main knobs
-└── src/
-    ├── main.c             # init + super-loop (tud_task / bridge / relay)
-    ├── tusb_config.h      # TinyUSB: 2× CDC, full-speed device
-    ├── usb_descriptors.c  # composite dual-CDC descriptors + chip-ID serial
-    ├── bridge.c/.h        # CDC0 <-> uart0, IRQ RX ring buffer, line-coding sync
-    ├── relay.c/.h         # CDC1 command parser -> GPIO
-    └── debug.c/.h         # dbg_printf() -> CDC2 debug-log port
+├── src/
+│   ├── main.c             # init + super-loop (tud_task / bridge / relay)
+│   ├── tusb_config.h      # TinyUSB: 3× CDC, full-speed device
+│   ├── usb_descriptors.c  # composite triple-CDC descriptors + chip-ID serial
+│   ├── bridge.c/.h        # CDC0 <-> uart0, IRQ RX ring buffer, line-coding sync
+│   ├── relay.c/.h         # CDC1 command parser -> GPIO
+│   ├── debug.c/.h         # dbg_printf() -> CDC2 debug-log port
+│   └── settings.c/.h      # power-loss-safe A/B flash settings
+├── tools/                 # host-side test/util scripts (loopback, relay, reset, debug)
+└── hardware/              # (future) open-hardware carrier board — see hardware/README.md
 ```
+
+> The directory and CMake target are still named `usb-uart-relay`/`usb_uart_relay` pending the
+> rename to `DUTler`/`dutler` (see the publication checklist).
 
 ## Debug log
 
@@ -166,3 +183,17 @@ host has the port open, so calls are cheap when unused. **Do not call `dbg_print
 interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 
 > USB VID/PID in `config.h` are pid.codes **test** IDs — replace before any distribution.
+
+## License
+
+- **Firmware** (this repo's `src/`, `include/`, build scripts): **GPL-3.0-or-later** — see
+  [`LICENSE`](LICENSE). Copyleft: redistributed/modified firmware must stay GPL.
+- **Hardware** (future `hardware/`): intended to be **CERN-OHL-P-2.0** (strongly-reciprocal
+  open hardware) — see `hardware/README.md`.
+- **Documentation** may be offered under **CC-BY-4.0**.
+
+Third-party components are under their own permissive licenses and are *not* relicensed: the
+Raspberry Pi **Pico SDK** (BSD-3-Clause) and **TinyUSB** (MIT), pulled in at build time.
+
+© the DUTler contributors. "Mender" and the moose are trademarks of their respective owner;
+DUTler is an independent project and not affiliated with or endorsed by them.
