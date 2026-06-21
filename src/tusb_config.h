@@ -44,7 +44,7 @@ extern "C" {
 #define CFG_TUD_ENDPOINT0_SIZE 64
 
 // ---- Enabled device classes ----
-#define CFG_TUD_CDC 3  // three CDC-ACM ports (bridge + relay control + debug log)
+#define CFG_TUD_CDC 3  // three CDC-ACM ports (bridge + output control + debug log)
 #define CFG_TUD_MSC 0
 #define CFG_TUD_HID 0
 #define CFG_TUD_MIDI 0

@@ -36,7 +36,7 @@ The firmware makes a stock Pico enumerate as **three USB serial ports**:
 | USB port | Purpose |
 |----------|---------|
 | **CDC0 — "UART Bridge"** | Transparent USB ↔ hardware-UART bridge (a real USB-serial adapter; host baud rate is mirrored onto the UART). |
-| **CDC1 — "Relay Control"** | Newline-terminated commands to switch the DUT control outputs — a power relay plus MOSFET strap/reset drivers. |
+| **CDC1 — "Control"** | Newline-terminated commands to switch the DUT control outputs — a power relay plus MOSFET strap/reset drivers. |
 | **CDC2 — "Debug Log"** | Read-only firmware log stream (open it to start receiving; output is dropped when nobody is listening). |
 
 They enumerate as three serial ports, in this order — **bridge, control, debug log**:
@@ -94,7 +94,7 @@ cmake --build build
 ls /dev/cu.usbmodem*                    # macOS: …1 bridge, …3 control, …5 debug
 # ls /dev/ttyACM*                       # Linux:  ttyACM0/1/2 = bridge/control/debug
 screen /dev/cu.usbmodemXXXX1 115200     # the DUT serial console (Linux: tio/minicom/screen on ttyACM0)
-#   …then open the control port and type 'help' for relay/strap/reset commands
+#   …then open the control port and type 'help' for the output/strap/reset commands
 ```
 
 See **Build**, **Flash** and **Test** below for the details, and **Wiring** for pin assignments.
@@ -111,7 +111,7 @@ See **Build**, **Flash** and **Test** below for the details, and **Wiring** for 
 | GND | any GND pin — **share ground with the DUT and any relay/MOSFET board** |
 
 All control outputs are 3.3 V logic, **active-high, and OFF at boot**. In firmware they're just
-generic switched GPIOs (all driven via the `relay`/name commands); their *intended* roles are:
+generic switched GPIOs (all driven via the `out`/`name` commands); their *intended* roles are:
 
 - **Out 1 → a power relay** — to cut/restore DUT power. Use a relay **module** with its own
   driver/opto stage; don't switch a coil straight off a GPIO.
@@ -141,10 +141,10 @@ cmake --build build                  # -> build/dutler.uf2
 ```
 
 When the adapter is already running, `flash.sh` reboots it into the bootloader
-automatically (no button) by sending the relay port's `bootsel` command, then loads the new
+automatically (no button) by sending the control port's `bootsel` command, then loads the new
 image. You can also trigger the reset yourself:
 
-- send `bootsel` to the relay port, **or**
+- send `bootsel` to the control port, **or**
 - open the **debug** port at **1200 baud** (the classic USB-serial "1200-baud touch";
   compile-time `ENABLE_BAUD_TOUCH_RESET` in `config.h`, on by default), **or**
 - `python3 tools/reset_bootsel.py`
@@ -167,12 +167,12 @@ After flashing, **three** devices appear: `ls /dev/tty.usbmodem*` (bridge / cont
   ```
   (Ctrl-A then K to quit `screen`.) Changing baud still works — it's pushed to the UART. The
   control port's `selftest` command checks GP0↔GP1 continuity for you.
-- **Control outputs:** open the *Relay Control* port and send commands:
+- **Control outputs:** open the *Control* port and send commands:
   ```
   help
   status
-  relay 1 on
-  relay 1 off
+  out 1 on
+  out 1 off
   name 2 fan
   fan toggle
   ```
@@ -190,25 +190,26 @@ ctest --test-dir build-tests --output-on-failure
 
 CI runs these on every push and pull request.
 
-## Relay command grammar
+## Control commands
 
 ```
-relay <id> on|off|toggle    id = relay number (1..) or a configured name
-<id> on|off|toggle          shorthand: e.g. 'pump on' == 'relay pump on'
-name <n> <alias|clear>      label relay n (then usable as <id> above)
+out <id> on|off|toggle      id = output number (1..) or a configured name
+<id> on|off|toggle          shorthand: e.g. 'pump on' == 'out pump on'
+name <n> <alias|clear>      label output n (then usable as <id> above)
 set baud <n>                bridge boot baud rate
 set format <8N1>            bridge boot data/parity/stop (e.g. 8N1, 7E1)
 save                        persist names + bridge defaults to flash
 selftest                    GP0<->GP1 loopback continuity check (non-destructive)
 factory-reset confirm       erase saved settings (back to defaults)
-status                      list relays + bridge defaults
+status                      list outputs + bridge defaults
+version                     print firmware version
 bootsel                     reboot into USB bootloader
 help                        show command help
 ```
 
 ## Persistent settings
 
-Relay **names** and the **bridge boot UART config** are stored in flash. `set …`/`name …`
+Output **names** and the **bridge boot UART config** are stored in flash. `set …`/`name …`
 change them in RAM (shown as "unsaved changes" in `status`); `save` writes them. They survive
 power cycles *and* normal firmware reflashes (the UF2 only overwrites the program region, not
 the settings sectors).
@@ -222,7 +223,7 @@ back to safe defaults. The record is **versioned**; `src/settings.c` documents t
 evolution rules and migrates the older format in place (v1 single-slot records are upgraded to
 v2 A/B on first boot, preserving names + baud).
 
-**Relays themselves always boot OFF** — their state is deliberately not persisted, so a power
+**Outputs themselves always boot OFF** — their state is deliberately not persisted, so a power
 blip can never silently re-energize a load. Implemented in `src/settings.c`
 (struct, CRC32, flash erase/program) — note flash writes briefly mask interrupts (a few ms),
 so avoid `save` in the middle of heavy bridge traffic.
@@ -234,7 +235,7 @@ iteration, so a wedged loop (e.g. a hung USB stack) reboots and recovers automat
 `save` path feeds it just before the interrupts-masked flash erase, which is the longest
 blocking section. At boot the firmware records whether the reset was a real watchdog timeout
 (via `watchdog_enable_caused_reboot()`, which ignores deliberate `bootsel`/reflash reboots)
-and `status` reports it. Relay outputs always come up OFF after any reset.
+and `status` reports it. Outputs always come up OFF after any reset.
 
 ## Design notes / non-goals
 
@@ -258,7 +259,7 @@ DUTler/
 ├── flash.sh               # build + picotool load
 ├── CMakeLists.txt
 ├── pico_sdk_import.cmake
-├── include/config.h       # pins, relay count/polarity, UART, USB IDs — main knobs
+├── include/config.h       # pins, output count/polarity, UART, USB IDs — main knobs
 ├── src/
 │   ├── main.c             # init + super-loop (tud_task / bridge / relay)
 │   ├── tusb_config.h      # TinyUSB: 3× CDC, full-speed device

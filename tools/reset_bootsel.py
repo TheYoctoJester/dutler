@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Northern.tech AS
 # SPDX-License-Identifier: Apache-2.0
 
-# Find the running adapter's relay-control port and tell it to reboot into the
+# Find the running adapter's control port and tell it to reboot into the
 # USB bootloader (BOOTSEL), so the firmware can be reflashed without the button.
-# Exit 0 if the reset command was sent, 1 if no relay port was found.
+# Exit 0 if the reset command was sent, 1 if no control port was found.
 import glob, os, select, sys, termios, time
 
 def raw(port):
@@ -32,8 +32,8 @@ for port in sorted(glob.glob("/dev/cu.usbmodem*")) + sorted(glob.glob("/dev/ttyA
         continue
     try:
         drain(fd, 0.1)
-        os.write(fd, b"status\r\n")          # only the relay port answers with "relay ..."
-        if b"relay" in drain(fd, 0.4):
+        os.write(fd, b"status\r\n")  # only the control port answers with a status dump
+        if b"bridge default" in drain(fd, 0.4):
             os.write(fd, b"bootsel\r\n")
             time.sleep(0.2)
             print(f"sent 'bootsel' to {port}")
@@ -42,5 +42,5 @@ for port in sorted(glob.glob("/dev/cu.usbmodem*")) + sorted(glob.glob("/dev/ttyA
         try: os.close(fd)
         except OSError: pass
 
-print("relay control port not found (already in BOOTSEL?)", file=sys.stderr)
+print("control port not found (already in BOOTSEL?)", file=sys.stderr)
 sys.exit(1)
