@@ -40,18 +40,50 @@ static void on_uart_rx(void) {
     }
 }
 
-void bridge_init(void) {
+// (Re)apply the UART configuration on the bridge pins. Safe to call repeatedly
+// — it does NOT touch the IRQ handler registration (which must be one-shot).
+static void configure_uart(void) {
     uart_init(BRIDGE_UART, g_settings.baud);
     gpio_set_function(BRIDGE_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(BRIDGE_RX_PIN, GPIO_FUNC_UART);
+    gpio_disable_pulls(BRIDGE_TX_PIN);  // clear anything the self-test left
+    gpio_disable_pulls(BRIDGE_RX_PIN);
     uart_set_hw_flow(BRIDGE_UART, false, false);
     uart_set_format(BRIDGE_UART, g_settings.data_bits, g_settings.stop_bits,
                     parity_enum(g_settings.parity));
     uart_set_fifo_enabled(BRIDGE_UART, true);
+    uart_set_irq_enables(BRIDGE_UART, true, false);  // RX only
+}
 
+void bridge_init(void) {
     irq_set_exclusive_handler(BRIDGE_UART_IRQ, on_uart_rx);
     irq_set_enabled(BRIDGE_UART_IRQ, true);
-    uart_set_irq_enables(BRIDGE_UART, true, false);  // RX only
+    configure_uart();
+}
+
+bool bridge_selftest(void) {
+    // Briefly repurpose the bridge pins as plain GPIO: drive TX, read RX (with a
+    // pull-down so an open line reads 0). If RX follows TX, the GP0<->GP1
+    // loopback jumper is present. Restores the UART before returning.
+    uart_set_irq_enables(BRIDGE_UART, false, false);
+    uart_deinit(BRIDGE_UART);
+
+    gpio_init(BRIDGE_TX_PIN);
+    gpio_set_dir(BRIDGE_TX_PIN, GPIO_OUT);
+    gpio_init(BRIDGE_RX_PIN);
+    gpio_set_dir(BRIDGE_RX_PIN, GPIO_IN);
+    gpio_pull_down(BRIDGE_RX_PIN);
+
+    bool ok = true;
+    const bool pattern[] = {true, false, true, false};
+    for (unsigned i = 0; i < sizeof(pattern) / sizeof(pattern[0]); i++) {
+        gpio_put(BRIDGE_TX_PIN, pattern[i]);
+        sleep_us(200);
+        if (gpio_get(BRIDGE_RX_PIN) != pattern[i]) ok = false;
+    }
+
+    configure_uart();  // restore the bridge
+    return ok;
 }
 
 void bridge_task(void) {

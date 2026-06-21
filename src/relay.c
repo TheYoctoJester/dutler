@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "bridge.h"
 #include "config.h"
 #include "debug.h"
 #include "pico/bootrom.h"
@@ -122,6 +123,7 @@ static void print_help(void) {
         "  set baud <n>                bridge boot baud rate\r\n"
         "  set format <8N1>            bridge boot data/parity/stop\r\n"
         "  save                        persist names + bridge defaults\r\n"
+        "  selftest                    GP0<->GP1 loopback continuity check\r\n"
         "  factory-reset confirm       erase saved settings (back to defaults)\r\n"
         "  status                      list relays + bridge defaults\r\n"
         "  bootsel                     reboot into USB bootloader\r\n"
@@ -306,6 +308,10 @@ static void parse_line(char *s) {
         cmd_set(&sp);
     } else if (strcmp(tok, "save") == 0) {
         cmd_save();
+    } else if (strcmp(tok, "selftest") == 0) {
+        cdc_print(bridge_selftest()
+                      ? "selftest: GP0<->GP1 continuity OK\r\n"
+                      : "selftest: GP0<->GP1 OPEN (check the loopback jumper)\r\n");
     } else if (strcmp(tok, "factory-reset") == 0) {
         char *a = strtok_r(NULL, " \t", &sp);
         if (!a || strcmp(a, "confirm") != 0) {
