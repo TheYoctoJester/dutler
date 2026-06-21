@@ -94,7 +94,10 @@ Relay **names** and the **bridge boot UART config** are stored in the last 4 KB 
 Pico's flash. `set …`/`name …` change them in RAM (shown as "unsaved changes" in `status`);
 `save` writes them to flash. They survive power cycles *and* normal firmware reflashes (the
 UF2 only overwrites the program region, not the top sector). A version+CRC header means a
-blank/garbage sector falls back to safe defaults.
+blank/garbage sector falls back to safe defaults. The record is **versioned** with a
+migration dispatch in `src/settings.c` — that file's header documents the append-only rules
+and includes a worked migrator template, so a future layout change can upgrade old records
+in place instead of discarding them.
 
 **Relays themselves always boot OFF** — their state is deliberately not persisted, so a power
 blip can never silently re-energize a load. Implemented in `src/settings.c`

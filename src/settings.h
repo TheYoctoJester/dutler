@@ -9,6 +9,10 @@
 #define RELAY_NAME_MAX 16  // including the NUL terminator
 
 // Persisted settings (relays always boot OFF, so their state is NOT stored).
+//
+// CHANGING THIS STRUCT? It is the on-flash payload. Add fields at the END only
+// (append-only) and follow the versioning/migration steps documented at the top
+// of settings.c — reordering or resizing existing fields breaks stored records.
 typedef struct {
     uint32_t baud;       // bridge UART boot baud rate
     uint8_t data_bits;   // 5..8
