@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 // --------------------------------------------------------------------
-//  TinyUSB configuration for an RP2040 USB device with two CDC ports.
+//  TinyUSB configuration for an RP2040 USB device with three CDC ports.
 // --------------------------------------------------------------------
 
 // The Pico SDK normally defines CFG_TUSB_MCU / CFG_TUSB_OS for us via the

@@ -78,7 +78,7 @@ static void print_status(void) {
 }
 
 static void print_banner(void) {
-    cdc_print("\r\nUSB-UART-Relay control port. Type 'help' for commands.\r\n");
+    cdc_print("\r\nDUTler control port. Type 'help' for commands.\r\n");
 }
 
 // Host opened/closed the relay port (DTR line). Greet on the rising edge.
@@ -95,7 +95,7 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
 
 static void print_help(void) {
     cdc_print(
-        "USB-UART-Relay control port\r\n"
+        "DUTler control port\r\n"
         "commands (newline-terminated):\r\n"
         "  relay <id> on|off|toggle    id = number 1.. or a name\r\n"
         "  <id> on|off|toggle          shorthand: drop the 'relay' keyword\r\n"
