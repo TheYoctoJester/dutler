@@ -79,6 +79,7 @@ After flashing, two devices appear: `ls /dev/tty.usbmodem*` (two entries).
 ```
 relay <id> on|off|toggle    id = relay number (1..) or a configured name
 relay <id> pulse <ms>       on for <ms> then auto-off
+<id> on|off|toggle|pulse    shorthand: e.g. 'pump on' == 'relay pump on'
 name <n> <alias|clear>      label relay n (then usable as <id> above)
 set baud <n>                bridge boot baud rate
 set format <8N1>            bridge boot data/parity/stop (e.g. 8N1, 7E1)

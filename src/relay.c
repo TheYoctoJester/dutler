@@ -109,6 +109,7 @@ static void print_help(void) {
         "commands (newline-terminated):\r\n"
         "  relay <id> on|off|toggle    id = number 1.. or a name\r\n"
         "  relay <id> pulse <ms>       on for <ms> then auto-off\r\n"
+        "  <id> on|off|toggle|pulse    shorthand: drop the 'relay' keyword\r\n"
         "  name <n> <alias|clear>      label relay n\r\n"
         "  set baud <n>                bridge boot baud rate\r\n"
         "  set format <8N1>            bridge boot data/parity/stop\r\n"
@@ -119,16 +120,13 @@ static void print_help(void) {
         "  help                        show this text\r\n");
 }
 
-static void cmd_relay(void) {
-    char *a_id = strtok(NULL, " \t");
+// Perform an action on an already-resolved relay. The next strtok tokens are
+// the action and (for pulse) its argument. Shared by "relay <id> ..." and the
+// bare "<name> ..." shorthand.
+static void relay_action(int idx) {
     char *a_cmd = strtok(NULL, " \t");
-    if (!a_id || !a_cmd) {
-        cdc_print("error: usage 'relay <id> on|off|toggle|pulse <ms>'\r\n");
-        return;
-    }
-    int idx = resolve_relay(a_id);
-    if (idx < 0) {
-        cdc_print("error: unknown relay\r\n");
+    if (!a_cmd) {
+        cdc_print("error: usage '<relay> on|off|toggle|pulse <ms>'\r\n");
         return;
     }
 
@@ -161,6 +159,30 @@ static void cmd_relay(void) {
     }
 }
 
+static void cmd_relay(void) {
+    char *a_id = strtok(NULL, " \t");
+    if (!a_id) {
+        cdc_print("error: usage 'relay <id> on|off|toggle|pulse <ms>'\r\n");
+        return;
+    }
+    int idx = resolve_relay(a_id);
+    if (idx < 0) {
+        cdc_print("error: unknown relay\r\n");
+        return;
+    }
+    relay_action(idx);
+}
+
+// Command words that a relay name must not shadow (they are matched first).
+static bool is_reserved_word(const char *w) {
+    static const char *const reserved[] = {
+        "relay", "name",    "set",  "save", "status",
+        "help",  "bootsel", "reset", "factory-reset"};
+    for (size_t i = 0; i < sizeof(reserved) / sizeof(reserved[0]); i++)
+        if (strcmp(w, reserved[i]) == 0) return true;
+    return false;
+}
+
 static void cmd_name(void) {
     char *a_n = strtok(NULL, " \t");
     char *a_alias = strtok(NULL, " \t");
@@ -185,6 +207,10 @@ static void cmd_name(void) {
             }
         if (numeric) {
             cdc_print("error: name cannot be all digits\r\n");
+            return;
+        }
+        if (is_reserved_word(a_alias)) {
+            cdc_print("error: name collides with a command word\r\n");
             return;
         }
         strncpy(dst, a_alias, RELAY_NAME_MAX - 1);
@@ -287,7 +313,13 @@ static void parse_line(char *s) {
         while (!time_reached(deadline)) tud_task();
         reset_usb_boot(0, 0);  // does not return
     } else {
-        cdc_print("error: unknown command (try 'help')\r\n");
+        // Shorthand: a relay number or configured name used as a verb,
+        // e.g. "pump on" == "relay pump on".
+        int idx = resolve_relay(tok);
+        if (idx >= 0)
+            relay_action(idx);
+        else
+            cdc_print("error: unknown command (try 'help')\r\n");
     }
 }
 
