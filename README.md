@@ -1,5 +1,6 @@
 # DUTler 🎩
 
+[![CI](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml/badge.svg)](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml)
 [![License: GPL-3.0-or-later OR Commercial](https://img.shields.io/badge/license-GPL--3.0--or--later%20OR%20Commercial-blue.svg)](LICENSE)
 [![Platform: RP2040](https://img.shields.io/badge/platform-RP2040-8a2be2.svg)](https://www.raspberrypi.com/products/raspberry-pi-pico/)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
