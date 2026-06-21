@@ -1,5 +1,6 @@
 #include "relay.h"
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,12 +11,14 @@
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
+#include "settings.h"
 #include "tusb.h"
 
 static const uint8_t relay_pins[RELAY_COUNT] = RELAY_PINS;
 static bool relay_state[RELAY_COUNT];
+static bool dirty = false;  // unsaved settings changes
 
-#define LINE_MAX 64
+#define LINE_MAX 80
 static char line_buf[LINE_MAX];
 static uint8_t line_len = 0;
 
@@ -34,11 +37,10 @@ void relay_init(void) {
     for (uint8_t i = 0; i < RELAY_COUNT; i++) {
         gpio_init(relay_pins[i]);
         gpio_set_dir(relay_pins[i], GPIO_OUT);
-        apply_relay(i, false);  // all OFF / safe state at power-on
+        apply_relay(i, false);  // always OFF at power-on (safe state)
     }
 }
 
-// Fired from a timer IRQ to release a pulsed relay.
 static int64_t pulse_off_cb(alarm_id_t id, void *user_data) {
     (void)id;
     uint8_t idx = (uint8_t)(uintptr_t)user_data;
@@ -46,13 +48,43 @@ static int64_t pulse_off_cb(alarm_id_t id, void *user_data) {
     return 0;  // one-shot
 }
 
+// Resolve a relay reference: a 1-based number or a configured name.
+static int resolve_relay(const char *tok) {
+    if (!tok || !tok[0]) return -1;
+    bool numeric = true;
+    for (const char *c = tok; *c; c++)
+        if (*c < '0' || *c > '9') {
+            numeric = false;
+            break;
+        }
+    if (numeric) {
+        int n = atoi(tok);
+        return (n >= 1 && n <= RELAY_COUNT) ? n - 1 : -1;
+    }
+    for (int i = 0; i < RELAY_COUNT; i++)
+        if (g_settings.relay_name[i][0] &&
+            strcmp(g_settings.relay_name[i], tok) == 0)
+            return i;
+    return -1;
+}
+
 static void print_status(void) {
-    char msg[40];
+    char msg[64];
     for (uint8_t i = 0; i < RELAY_COUNT; i++) {
-        snprintf(msg, sizeof(msg), "relay %u %s\r\n", (unsigned)(i + 1),
-                 relay_state[i] ? "on" : "off");
+        const char *nm = g_settings.relay_name[i];
+        const char *st = relay_state[i] ? "on" : "off";
+        if (nm[0])
+            snprintf(msg, sizeof(msg), "relay %u (%s) %s\r\n", i + 1, nm, st);
+        else
+            snprintf(msg, sizeof(msg), "relay %u %s\r\n", i + 1, st);
         cdc_print(msg);
     }
+    char pc = g_settings.parity == 1 ? 'O' : g_settings.parity == 2 ? 'E' : 'N';
+    snprintf(msg, sizeof(msg), "bridge default %lu baud %u%c%u\r\n",
+             (unsigned long)g_settings.baud, g_settings.data_bits, pc,
+             g_settings.stop_bits);
+    cdc_print(msg);
+    if (dirty) cdc_print("(unsaved changes - use 'save')\r\n");
 }
 
 static void print_banner(void) {
@@ -75,13 +107,152 @@ static void print_help(void) {
     cdc_print(
         "USB-UART-Relay control port\r\n"
         "commands (newline-terminated):\r\n"
-        "  relay <n> on            energize relay n\r\n"
-        "  relay <n> off           de-energize relay n\r\n"
-        "  relay <n> toggle        flip relay n\r\n"
-        "  relay <n> pulse <ms>    on for <ms> then auto-off\r\n"
-        "  status                  list all relay states\r\n"
-        "  bootsel                 reboot into USB bootloader (for reflashing)\r\n"
-        "  help                    show this text\r\n");
+        "  relay <id> on|off|toggle    id = number 1.. or a name\r\n"
+        "  relay <id> pulse <ms>       on for <ms> then auto-off\r\n"
+        "  name <n> <alias|clear>      label relay n\r\n"
+        "  set baud <n>                bridge boot baud rate\r\n"
+        "  set format <8N1>            bridge boot data/parity/stop\r\n"
+        "  save                        persist names + bridge defaults\r\n"
+        "  status                      list relays + bridge defaults\r\n"
+        "  bootsel                     reboot into USB bootloader\r\n"
+        "  help                        show this text\r\n");
+}
+
+static void cmd_relay(void) {
+    char *a_id = strtok(NULL, " \t");
+    char *a_cmd = strtok(NULL, " \t");
+    if (!a_id || !a_cmd) {
+        cdc_print("error: usage 'relay <id> on|off|toggle|pulse <ms>'\r\n");
+        return;
+    }
+    int idx = resolve_relay(a_id);
+    if (idx < 0) {
+        cdc_print("error: unknown relay\r\n");
+        return;
+    }
+
+    if (strcmp(a_cmd, "on") == 0) {
+        apply_relay(idx, true);
+        dbg_printf("relay %d -> on\r\n", idx + 1);
+        cdc_print("ok\r\n");
+    } else if (strcmp(a_cmd, "off") == 0) {
+        apply_relay(idx, false);
+        dbg_printf("relay %d -> off\r\n", idx + 1);
+        cdc_print("ok\r\n");
+    } else if (strcmp(a_cmd, "toggle") == 0) {
+        apply_relay(idx, !relay_state[idx]);
+        dbg_printf("relay %d -> %s (toggle)\r\n", idx + 1,
+                   relay_state[idx] ? "on" : "off");
+        cdc_print("ok\r\n");
+    } else if (strcmp(a_cmd, "pulse") == 0) {
+        char *a_ms = strtok(NULL, " \t");
+        int ms = a_ms ? atoi(a_ms) : 0;
+        if (ms <= 0) {
+            cdc_print("error: pulse needs ms > 0\r\n");
+            return;
+        }
+        apply_relay(idx, true);
+        add_alarm_in_ms(ms, pulse_off_cb, (void *)(uintptr_t)idx, true);
+        dbg_printf("relay %d -> pulse %d ms\r\n", idx + 1, ms);
+        cdc_print("ok\r\n");
+    } else {
+        cdc_print("error: unknown relay command\r\n");
+    }
+}
+
+static void cmd_name(void) {
+    char *a_n = strtok(NULL, " \t");
+    char *a_alias = strtok(NULL, " \t");
+    if (!a_n || !a_alias) {
+        cdc_print("error: usage 'name <n> <alias|clear>'\r\n");
+        return;
+    }
+    int n = atoi(a_n);
+    if (n < 1 || n > RELAY_COUNT) {
+        cdc_print("error: relay number out of range\r\n");
+        return;
+    }
+    char *dst = g_settings.relay_name[n - 1];
+    if (strcmp(a_alias, "clear") == 0) {
+        dst[0] = '\0';
+    } else {
+        bool numeric = true;
+        for (char *c = a_alias; *c; c++)
+            if (*c < '0' || *c > '9') {
+                numeric = false;
+                break;
+            }
+        if (numeric) {
+            cdc_print("error: name cannot be all digits\r\n");
+            return;
+        }
+        strncpy(dst, a_alias, RELAY_NAME_MAX - 1);
+        dst[RELAY_NAME_MAX - 1] = '\0';
+    }
+    dirty = true;
+    cdc_print("ok\r\n");
+}
+
+static void cmd_set(void) {
+    char *what = strtok(NULL, " \t");
+    char *val = strtok(NULL, " \t");
+    if (!what || !val) {
+        cdc_print("error: usage 'set baud <n>' | 'set format <8N1>'\r\n");
+        return;
+    }
+    if (strcmp(what, "baud") == 0) {
+        int b = atoi(val);
+        if (b < 50 || b > 4000000) {
+            cdc_print("error: baud out of range (50..4000000)\r\n");
+            return;
+        }
+        g_settings.baud = (uint32_t)b;
+        dirty = true;
+        cdc_print("ok (effective after 'save' + reboot)\r\n");
+    } else if (strcmp(what, "format") == 0) {
+        if (strlen(val) != 3) {
+            cdc_print("error: format must be like 8N1\r\n");
+            return;
+        }
+        int d = val[0] - '0';
+        char p = val[1];
+        int s = val[2] - '0';
+        uint8_t parity;
+        if (p == 'N' || p == 'n')
+            parity = 0;
+        else if (p == 'O' || p == 'o')
+            parity = 1;
+        else if (p == 'E' || p == 'e')
+            parity = 2;
+        else {
+            cdc_print("error: parity must be N, O or E\r\n");
+            return;
+        }
+        if (d < 5 || d > 8) {
+            cdc_print("error: data bits must be 5..8\r\n");
+            return;
+        }
+        if (s != 1 && s != 2) {
+            cdc_print("error: stop bits must be 1 or 2\r\n");
+            return;
+        }
+        g_settings.data_bits = (uint8_t)d;
+        g_settings.parity = parity;
+        g_settings.stop_bits = (uint8_t)s;
+        dirty = true;
+        cdc_print("ok (effective after 'save' + reboot)\r\n");
+    } else {
+        cdc_print("error: set what? (baud|format)\r\n");
+    }
+}
+
+static void cmd_save(void) {
+    if (settings_save()) {
+        dirty = false;
+        cdc_print("saved\r\n");
+    } else {
+        cdc_print("error: save failed\r\n");
+    }
 }
 
 static void parse_line(char *s) {
@@ -90,64 +261,24 @@ static void parse_line(char *s) {
 
     if (strcmp(tok, "help") == 0) {
         print_help();
-        return;
-    }
-    if (strcmp(tok, "status") == 0) {
+    } else if (strcmp(tok, "status") == 0) {
         print_status();
-        return;
-    }
-    if (strcmp(tok, "bootsel") == 0 || strcmp(tok, "reset") == 0) {
+    } else if (strcmp(tok, "relay") == 0) {
+        cmd_relay();
+    } else if (strcmp(tok, "name") == 0) {
+        cmd_name();
+    } else if (strcmp(tok, "set") == 0) {
+        cmd_set();
+    } else if (strcmp(tok, "save") == 0) {
+        cmd_save();
+    } else if (strcmp(tok, "bootsel") == 0 || strcmp(tok, "reset") == 0) {
         cdc_print("rebooting to BOOTSEL\r\n");
-        // Let the reply flush over USB before we vanish into the bootloader.
         absolute_time_t deadline = make_timeout_time_ms(50);
         while (!time_reached(deadline)) tud_task();
         reset_usb_boot(0, 0);  // does not return
-        return;
+    } else {
+        cdc_print("error: unknown command (try 'help')\r\n");
     }
-    if (strcmp(tok, "relay") == 0) {
-        char *a_num = strtok(NULL, " \t");
-        char *a_cmd = strtok(NULL, " \t");
-        if (!a_num || !a_cmd) {
-            cdc_print("error: usage 'relay <n> on|off|toggle|pulse <ms>'\r\n");
-            return;
-        }
-        int n = atoi(a_num);
-        if (n < 1 || n > RELAY_COUNT) {
-            cdc_print("error: relay number out of range\r\n");
-            return;
-        }
-        uint8_t idx = (uint8_t)(n - 1);
-
-        if (strcmp(a_cmd, "on") == 0) {
-            apply_relay(idx, true);
-            dbg_printf("relay %d -> on\r\n", n);
-            cdc_print("ok\r\n");
-        } else if (strcmp(a_cmd, "off") == 0) {
-            apply_relay(idx, false);
-            dbg_printf("relay %d -> off\r\n", n);
-            cdc_print("ok\r\n");
-        } else if (strcmp(a_cmd, "toggle") == 0) {
-            apply_relay(idx, !relay_state[idx]);
-            dbg_printf("relay %d -> %s (toggle)\r\n", n, relay_state[idx] ? "on" : "off");
-            cdc_print("ok\r\n");
-        } else if (strcmp(a_cmd, "pulse") == 0) {
-            char *a_ms = strtok(NULL, " \t");
-            int ms = a_ms ? atoi(a_ms) : 0;
-            if (ms <= 0) {
-                cdc_print("error: pulse needs ms > 0\r\n");
-                return;
-            }
-            apply_relay(idx, true);
-            add_alarm_in_ms(ms, pulse_off_cb, (void *)(uintptr_t)idx, true);
-            dbg_printf("relay %d -> pulse %d ms\r\n", n, ms);
-            cdc_print("ok\r\n");
-        } else {
-            cdc_print("error: unknown relay command\r\n");
-        }
-        return;
-    }
-
-    cdc_print("error: unknown command (try 'help')\r\n");
 }
 
 void relay_task(void) {

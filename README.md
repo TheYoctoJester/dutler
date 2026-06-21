@@ -77,13 +77,29 @@ After flashing, two devices appear: `ls /dev/tty.usbmodem*` (two entries).
 ## Relay command grammar
 
 ```
-relay <n> on            energize relay n (1..RELAY_COUNT)
-relay <n> off           de-energize relay n
-relay <n> toggle        flip relay n
-relay <n> pulse <ms>    on for <ms> then auto-off
-status                  list all relay states
-help                    show command help
+relay <id> on|off|toggle    id = relay number (1..) or a configured name
+relay <id> pulse <ms>       on for <ms> then auto-off
+name <n> <alias|clear>      label relay n (then usable as <id> above)
+set baud <n>                bridge boot baud rate
+set format <8N1>            bridge boot data/parity/stop (e.g. 8N1, 7E1)
+save                        persist names + bridge defaults to flash
+status                      list relays + bridge defaults
+bootsel                     reboot into USB bootloader
+help                        show command help
 ```
+
+## Persistent settings
+
+Relay **names** and the **bridge boot UART config** are stored in the last 4 KB sector of the
+Pico's flash. `set …`/`name …` change them in RAM (shown as "unsaved changes" in `status`);
+`save` writes them to flash. They survive power cycles *and* normal firmware reflashes (the
+UF2 only overwrites the program region, not the top sector). A version+CRC header means a
+blank/garbage sector falls back to safe defaults.
+
+**Relays themselves always boot OFF** — their state is deliberately not persisted, so a power
+blip can never silently re-energize a load. Implemented in `src/settings.c`
+(struct, CRC32, flash erase/program) — note flash writes briefly mask interrupts (a few ms),
+so avoid `save` in the middle of heavy bridge traffic.
 
 ## Layout
 

@@ -1,0 +1,28 @@
+#ifndef SETTINGS_H
+#define SETTINGS_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#include "config.h"
+
+#define RELAY_NAME_MAX 16  // including the NUL terminator
+
+// Persisted settings (relays always boot OFF, so their state is NOT stored).
+typedef struct {
+    uint32_t baud;       // bridge UART boot baud rate
+    uint8_t data_bits;   // 5..8
+    uint8_t parity;      // 0 = none, 1 = odd, 2 = even
+    uint8_t stop_bits;   // 1 or 2
+    char relay_name[RELAY_COUNT][RELAY_NAME_MAX];  // "" = unnamed
+} settings_t;
+
+extern settings_t g_settings;
+
+// Load from flash into g_settings (falls back to defaults if absent/invalid).
+void settings_load(void);
+
+// Persist g_settings to flash. Returns true on success (verified read-back).
+bool settings_save(void);
+
+#endif  // SETTINGS_H

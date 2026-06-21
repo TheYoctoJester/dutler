@@ -18,6 +18,7 @@ add_executable(usb_uart_relay
     src/bridge.c
     src/relay.c
     src/debug.c
+    src/settings.c
 )
 
 target_include_directories(usb_uart_relay PRIVATE
@@ -30,6 +31,7 @@ target_link_libraries(usb_uart_relay
     tinyusb_device
     hardware_uart
     hardware_irq
+    hardware_flash
     pico_unique_id
 )
 

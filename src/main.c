@@ -2,9 +2,11 @@
 #include "config.h"
 #include "pico/stdlib.h"
 #include "relay.h"
+#include "settings.h"
 #include "tusb.h"
 
 int main(void) {
+    settings_load();  // before bridge_init: provides the boot UART defaults
     tusb_init();
     bridge_init();
     relay_init();

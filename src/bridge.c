@@ -6,7 +6,12 @@
 #include "hardware/uart.h"
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
+#include "settings.h"
 #include "tusb.h"
+
+static uart_parity_t parity_enum(uint8_t p) {
+    return p == 1 ? UART_PARITY_ODD : p == 2 ? UART_PARITY_EVEN : UART_PARITY_NONE;
+}
 
 // Ring buffer filled by the UART RX IRQ, drained to USB in bridge_task().
 #define RX_RING_SIZE 1024
@@ -27,11 +32,12 @@ static void on_uart_rx(void) {
 }
 
 void bridge_init(void) {
-    uart_init(BRIDGE_UART, BRIDGE_INIT_BAUD);
+    uart_init(BRIDGE_UART, g_settings.baud);
     gpio_set_function(BRIDGE_TX_PIN, GPIO_FUNC_UART);
     gpio_set_function(BRIDGE_RX_PIN, GPIO_FUNC_UART);
     uart_set_hw_flow(BRIDGE_UART, false, false);
-    uart_set_format(BRIDGE_UART, 8, 1, UART_PARITY_NONE);
+    uart_set_format(BRIDGE_UART, g_settings.data_bits, g_settings.stop_bits,
+                    parity_enum(g_settings.parity));
     uart_set_fifo_enabled(BRIDGE_UART, true);
 
     irq_set_exclusive_handler(BRIDGE_UART_IRQ, on_uart_rx);
