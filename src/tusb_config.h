@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef _TUSB_CONFIG_H_
 #define _TUSB_CONFIG_H_

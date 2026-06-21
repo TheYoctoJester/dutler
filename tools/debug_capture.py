@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Northern.tech AS
-# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: Apache-2.0
 
 import os, sys, select, time, termios, threading
 
