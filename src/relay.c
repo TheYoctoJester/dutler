@@ -55,6 +55,22 @@ static void print_status(void) {
     }
 }
 
+static void print_banner(void) {
+    cdc_print("\r\nUSB-UART-Relay control port. Type 'help' for commands.\r\n");
+}
+
+// Host opened/closed the relay port (DTR line). Greet on the rising edge.
+void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
+    (void)rts;
+    static bool was_open = false;
+    if (itf != CDC_ITF_RELAY) return;
+    if (dtr && !was_open) {
+        line_len = 0;  // discard any half-typed line from a previous session
+        print_banner();
+    }
+    was_open = dtr;
+}
+
 static void print_help(void) {
     cdc_print(
         "USB-UART-Relay control port\r\n"
