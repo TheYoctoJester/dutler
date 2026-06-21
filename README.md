@@ -222,6 +222,7 @@ and `status` reports it. Relay outputs always come up OFF after any reset.
 ```
 DUTler/
 ├── LICENSE                # Apache-2.0 license text
+├── CONTRIBUTING.md        # how to contribute (DCO, build/style/PR)
 ├── THIRD_PARTY.md         # third-party components + their licenses
 ├── env.sh                 # self-contained build environment (source before building)
 ├── flash.sh               # build + picotool load
@@ -256,6 +257,12 @@ host has the port open, so calls are cheap when unused. **Do not call `dbg_print
 interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 
 > USB VID/PID in `config.h` are pid.codes **test** IDs — replace before any distribution.
+
+## Contributing
+
+Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions are accepted
+under a DCO sign-off (`git commit -s`). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md),
+and report security issues privately per [`SECURITY.md`](SECURITY.md).
 
 ## License
 
