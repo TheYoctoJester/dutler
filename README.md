@@ -42,7 +42,7 @@ cmake -S . -B build -G Ninja \
   -DPICO_SDK_PATH="$PICO_SDK_PATH" \
   -DPICO_TOOLCHAIN_PATH="$PICO_TOOLCHAIN_PATH" \
   -Dpicotool_DIR="$picotool_DIR"     # first time only
-cmake --build build                  # -> build/usb_uart_relay.uf2
+cmake --build build                  # -> build/dutler.uf2
 ```
 
 ## Flash
@@ -61,7 +61,7 @@ image. You can also trigger the reset yourself:
 - `python3 tools/reset_bootsel.py`
 
 **First flash / wedged board:** hold the **BOOTSEL** button while plugging in (mounts as
-`RPI-RP2`), then run `./flash.sh` or drag `build/usb_uart_relay.uf2` onto the drive.
+`RPI-RP2`), then run `./flash.sh` or drag `build/dutler.uf2` onto the drive.
 
 > The 1200-baud reset is wired to the *debug* port only — the bridge port stays free to use
 > any real baud rate (including 1200).
@@ -163,9 +163,6 @@ DUTler/
 ├── tools/                 # host-side test/util scripts (loopback, relay, reset, debug)
 └── hardware/              # (future) open-hardware carrier board — see hardware/README.md
 ```
-
-> The directory and CMake target are still named `usb-uart-relay`/`usb_uart_relay` pending the
-> rename to `DUTler`/`dutler` (see the publication checklist).
 
 ## Debug log
 

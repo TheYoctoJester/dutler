@@ -89,8 +89,8 @@ uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
 // ---- String descriptors ----
 static char const *string_desc_arr[] = {
     (const char[]){0x09, 0x04},  // 0: supported language = English (0x0409)
-    "Pico Projects",             // 1: Manufacturer
-    "USB-UART + Relay Adapter",  // 2: Product
+    "theyoctojester",            // 1: Manufacturer
+    "DUTler",                    // 2: Product
     NULL,                        // 3: Serial number (filled from chip ID below)
     "UART Bridge",               // 4: CDC0 interface
     "Relay Control",             // 5: CDC1 interface

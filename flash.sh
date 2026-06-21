@@ -25,5 +25,5 @@ if ! in_bootsel; then
 fi
 
 echo "=== loading firmware ==="
-picotool load -x build/usb_uart_relay.uf2
+picotool load -x build/dutler.uf2
 echo "done."
