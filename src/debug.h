@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Northern.tech AS
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #ifndef DEBUG_H
 #define DEBUG_H
 

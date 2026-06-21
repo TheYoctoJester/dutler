@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 cmake_minimum_required(VERSION 3.13)
 
 # Target a stock Raspberry Pi Pico (RP2040).

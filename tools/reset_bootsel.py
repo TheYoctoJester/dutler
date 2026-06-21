@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Find the running adapter's relay-control port and tell it to reboot into the
 # USB bootloader (BOOTSEL), so the firmware can be reflashed without the button.
 # Exit 0 if the reset command was sent, 1 if no relay port was found.

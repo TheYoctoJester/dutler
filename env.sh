@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Source this before building:  source env.sh
 #
 # Portable, override-friendly build environment for DUTler. Anything already set
