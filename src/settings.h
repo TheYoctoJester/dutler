@@ -11,7 +11,7 @@
 
 #define RELAY_NAME_MAX 16  // including the NUL terminator
 
-// Persisted settings (relays always boot OFF, so their state is NOT stored).
+// Persisted settings (outputs always boot OFF, so their state is NOT stored).
 //
 // CHANGING THIS STRUCT? It is the on-flash payload. Add fields at the END only
 // (append-only) and follow the versioning/migration steps documented at the top

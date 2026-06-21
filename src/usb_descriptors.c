@@ -9,7 +9,7 @@
 
 // =====================================================================
 //  USB descriptors for a composite device exposing THREE CDC-ACM ports.
-//  CDC0 = transparent UART bridge, CDC1 = relay command channel,
+//  CDC0 = transparent UART bridge, CDC1 = output command channel,
 //  CDC2 = read-only firmware debug log.
 // =====================================================================
 
@@ -73,7 +73,7 @@ static uint8_t const desc_configuration[] = {
     // CDC 0 — UART bridge (interface string index 4)
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
 
-    // CDC 1 — relay control (interface string index 5)
+    // CDC 1 — output control (interface string index 5)
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
 
     // CDC 2 — debug log (interface string index 6)
@@ -92,7 +92,7 @@ static char const *string_desc_arr[] = {
     "DUTler",                    // 2: Product
     NULL,                        // 3: Serial number (filled from chip ID below)
     "UART Bridge",               // 4: CDC0 interface
-    "Relay Control",             // 5: CDC1 interface
+    "Control",                   // 5: CDC1 interface
     "Debug Log",                 // 6: CDC2 interface
 };
 

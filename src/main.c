@@ -19,7 +19,7 @@
 #endif
 
 // True if this boot followed a watchdog timeout (a real hang), as opposed to a
-// normal power-up or a deliberate bootsel/reflash. Read by the relay 'status'.
+// normal power-up or a deliberate bootsel/reflash. Reported by the 'status' command.
 bool g_boot_by_watchdog = false;
 
 int main(void) {
