@@ -13,8 +13,8 @@ enable_testing()
 
 add_executable(unit
     test_main.c
-    ../src/crc32.c
-    ../src/parse.c
+    ../src/util/crc32.c
+    ../src/util/numparse.c
     ../src/settings_codec.c
 )
 target_include_directories(unit PRIVATE ../src ../include)

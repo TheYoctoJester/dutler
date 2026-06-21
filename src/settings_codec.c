@@ -6,7 +6,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "crc32.h"
+#include "util/crc32.h"
 
 // ---------------------------------------------------------------------------
 //  Frozen per-version payload snapshots. NEVER edit an existing settings_v<N>_t.

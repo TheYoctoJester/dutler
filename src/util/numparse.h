@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef DUTLER_PARSE_H
-#define DUTLER_PARSE_H
+#ifndef DUTLER_NUMPARSE_H
+#define DUTLER_NUMPARSE_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -12,4 +12,4 @@
 // Pure; no SDK dependency.
 bool parse_u32(const char *s, uint32_t *out);
 
-#endif  // DUTLER_PARSE_H
+#endif  // DUTLER_NUMPARSE_H

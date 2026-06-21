@@ -11,13 +11,13 @@
 #include "bridge.h"
 #include "config.h"
 #include "console.h"
-#include "debug.h"
 #include "outputs.h"
-#include "parse.h"
 #include "pico/bootrom.h"
 #include "pico/time.h"
 #include "settings.h"
 #include "tusb.h"
+#include "util/debug.h"
+#include "util/numparse.h"
 
 extern bool g_boot_by_watchdog;  // defined in main.c
 

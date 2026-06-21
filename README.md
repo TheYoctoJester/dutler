@@ -271,11 +271,12 @@ DUTler/
 │   ├── outputs.c/.h       # GPIO output layer (power relay + strap/reset MOSFETs)
 │   ├── console.c/.h       # CDC1 line transport (read/assemble lines, write replies)
 │   ├── command.c/.h       # control-port command interpreter (parse + dispatch)
-│   ├── debug.c/.h         # dbg_printf() -> CDC2 debug-log port
 │   ├── settings.c/.h      # power-loss-safe A/B flash settings (flash I/O + slots)
 │   ├── settings_codec.c/.h # pure record (de)serialization — unit-tested
-│   ├── crc32.c/.h         # pure CRC-32 — unit-tested
-│   └── parse.c/.h         # pure integer parsing — unit-tested
+│   └── util/              # auxiliary helpers (not product logic)
+│       ├── crc32.c/.h     # pure CRC-32 — unit-tested
+│       ├── numparse.c/.h  # pure integer parsing (parse_u32) — unit-tested
+│       └── debug.c/.h     # dbg_printf() -> CDC2 debug-log port
 ├── tests/                 # host unit tests (native build, no SDK) + CMakeLists
 ├── tools/                 # host-side test/util scripts (loopback, out, reset, debug)
 └── hardware/              # (future) open-hardware carrier board — see hardware/README.md
@@ -292,7 +293,7 @@ screen /dev/cu.usbmodemXXXX5 115200      # or: python3 tools/debug_capture.py
 The firmware also logs **`bridge: RX overflow ...`** here (rate-limited) if the UART-to-USB
 ring ever drops bytes because the host stopped draining — so silent data loss becomes visible.
 
-Add your own with `dbg_printf("...")` (declared in `src/debug.h`). Output is only sent while a
+Add your own with `dbg_printf("...")` (declared in `src/util/debug.h`). Output is only sent while a
 host has the port open, so calls are cheap when unused. **Do not call `dbg_printf` from an
 interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 
