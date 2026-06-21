@@ -1,5 +1,6 @@
 # DUTler 🎩
 
+[![CI](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml/badge.svg)](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml)
 [![Platform: RP2040](https://img.shields.io/badge/platform-RP2040-8a2be2.svg)](https://www.raspberrypi.com/products/raspberry-pi-pico/)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome%20(DCO)-brightgreen.svg)](CONTRIBUTING.md)
