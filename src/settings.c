@@ -1,5 +1,6 @@
 #include "settings.h"
 
+#include <stddef.h>
 #include <string.h>
 
 #include "config.h"
@@ -81,6 +82,7 @@ typedef struct {
     uint8_t parity;
     uint8_t stop_bits;
     char relay_name[RELAY_COUNT][RELAY_NAME_MAX];
+    uint8_t reserved;
 } settings_v1_t;
 
 // The live settings_t must always equal the NEWEST frozen snapshot. When you
@@ -88,6 +90,20 @@ typedef struct {
 _Static_assert(sizeof(settings_t) == sizeof(settings_v1_t),
                "live settings_t diverged from the latest frozen snapshot: "
                "snapshot the old layout as settings_v<N>_t and bump SETTINGS_VERSION");
+
+// Enforce the on-flash layout: the struct size must equal the exact sum of its
+// fields (i.e. NO implicit/compiler padding), and the fields must sit at the
+// offsets the stored records were written with. Any drift breaks the build
+// instead of silently mis-reading flash on a future toolchain/edit.
+_Static_assert(sizeof(settings_v1_t) ==
+                   4u /*baud*/ + 1u /*data_bits*/ + 1u /*parity*/ +
+                       1u /*stop_bits*/ + (RELAY_COUNT * RELAY_NAME_MAX) +
+                       1u /*reserved*/,
+               "implicit padding crept into settings_t: reorder fields or add "
+               "explicit reserved bytes to remove the gap");
+_Static_assert(offsetof(settings_v1_t, baud) == 0, "baud must stay at offset 0");
+_Static_assert(offsetof(settings_v1_t, relay_name) == 7,
+               "relay_name offset changed: this breaks every stored record");
 
 // The whole record must fit in a single programmable flash page.
 _Static_assert(HDR_BYTES + sizeof(settings_t) + CRC_BYTES <= FLASH_PAGE_SIZE,

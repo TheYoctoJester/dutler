@@ -19,6 +19,10 @@ typedef struct {
     uint8_t parity;      // 0 = none, 1 = odd, 2 = even
     uint8_t stop_bits;   // 1 or 2
     char relay_name[RELAY_COUNT][RELAY_NAME_MAX];  // "" = unnamed
+    uint8_t reserved;    // explicit trailing pad: keeps the layout free of any
+                         // implicit padding (enforced by static asserts in
+                         // settings.c). Was the compiler's pad byte before;
+                         // same offset, so stored records stay compatible.
 } settings_t;
 
 extern settings_t g_settings;

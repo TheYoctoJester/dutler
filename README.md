@@ -46,7 +46,8 @@ automatically (no button) by sending the relay port's `bootsel` command, then lo
 image. You can also trigger the reset yourself:
 
 - send `bootsel` to the relay port, **or**
-- open the **debug** port at **1200 baud** (the classic USB-serial "1200-baud touch"), **or**
+- open the **debug** port at **1200 baud** (the classic USB-serial "1200-baud touch";
+  compile-time `ENABLE_BAUD_TOUCH_RESET` in `config.h`, on by default), **or**
 - `python3 tools/reset_bootsel.py`
 
 **First flash / wedged board:** hold the **BOOTSEL** button while plugging in (mounts as
@@ -131,6 +132,9 @@ Firmware logs go to the **Debug Log** port (CDC2). Watch them with:
 ```sh
 screen /dev/cu.usbmodemXXXX5 115200      # or: python3 tools/debug_capture.py
 ```
+
+The firmware also logs **`bridge: RX overflow ...`** here (rate-limited) if the UART-to-USB
+ring ever drops bytes because the host stopped draining — so silent data loss becomes visible.
 
 Add your own with `dbg_printf("...")` (declared in `src/debug.h`). Output is only sent while a
 host has the port open, so calls are cheap when unused. **Do not call `dbg_printf` from an

@@ -16,8 +16,9 @@ static uart_parity_t parity_enum(uint8_t p) {
 // Ring buffer filled by the UART RX IRQ, drained to USB in bridge_task().
 #define RX_RING_SIZE 1024
 static uint8_t rx_ring[RX_RING_SIZE];
-static volatile uint16_t rx_head = 0;  // written by IRQ
-static volatile uint16_t rx_tail = 0;  // written by task
+static volatile uint16_t rx_head = 0;   // written by IRQ
+static volatile uint16_t rx_tail = 0;   // written by task
+static volatile uint32_t rx_drops = 0;  // bytes lost to ring overflow (IRQ-only writer)
 
 static void on_uart_rx(void) {
     while (uart_is_readable(BRIDGE_UART)) {
@@ -26,8 +27,10 @@ static void on_uart_rx(void) {
         if (next != rx_tail) {
             rx_ring[rx_head] = c;
             rx_head = next;
+        } else {
+            rx_drops++;  // ring full: host isn't draining fast enough. Reported
+                         // from bridge_task() (never log from an IRQ).
         }
-        // Ring full: drop the byte (host isn't draining fast enough).
     }
 }
 
@@ -60,6 +63,18 @@ void bridge_task(void) {
         tud_cdc_n_write_char(CDC_ITF_BRIDGE, (char)c);
     }
     tud_cdc_n_write_flush(CDC_ITF_BRIDGE);
+
+    // Surface silent data loss on the debug port, rate-limited so a sustained
+    // overflow can't itself flood the log.
+    static uint32_t drops_reported = 0;
+    static absolute_time_t drops_next_report = {0};  // 0 -> first report is immediate
+    uint32_t drops = rx_drops;
+    if (drops != drops_reported && time_reached(drops_next_report)) {
+        dbg_printf("bridge: RX overflow, %lu byte(s) dropped total\r\n",
+                   (unsigned long)drops);
+        drops_reported = drops;
+        drops_next_report = make_timeout_time_ms(500);
+    }
 }
 
 // Host opened/reconfigured the bridge port -> mirror onto the hardware UART,
@@ -67,10 +82,12 @@ void bridge_task(void) {
 void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *coding) {
     // Standard "1200-baud touch" reset, applied to the debug port only. The
     // bridge port must stay free to use any real baud rate (incl. 1200).
+#if ENABLE_BAUD_TOUCH_RESET
     if (itf == CDC_ITF_DEBUG && coding->bit_rate == 1200) {
         reset_usb_boot(0, 0);  // does not return
         return;
     }
+#endif
 
     if (itf != CDC_ITF_BRIDGE) return;
 

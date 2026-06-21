@@ -27,6 +27,17 @@ static void cdc_print(const char *s) {
     tud_cdc_n_write_flush(CDC_ITF_RELAY);
 }
 
+// Parse a base-10 unsigned integer, rejecting empty input and trailing junk
+// (unlike atoi(), which silently treats "banana" / "12x" as 0).
+static bool parse_u32(const char *s, uint32_t *out) {
+    if (!s || !*s) return false;
+    char *end;
+    unsigned long v = strtoul(s, &end, 10);
+    if (*end != '\0') return false;  // reject anything not fully numeric
+    *out = (uint32_t)v;
+    return true;
+}
+
 static void apply_relay(uint8_t idx, bool on) {
     relay_state[idx] = on;
     bool level = RELAY_ACTIVE_LOW ? !on : on;
@@ -41,6 +52,7 @@ void relay_init(void) {
     }
 }
 
+// Fired from a timer IRQ to release a pulsed relay.
 static int64_t pulse_off_cb(alarm_id_t id, void *user_data) {
     (void)id;
     uint8_t idx = (uint8_t)(uintptr_t)user_data;
@@ -51,16 +63,9 @@ static int64_t pulse_off_cb(alarm_id_t id, void *user_data) {
 // Resolve a relay reference: a 1-based number or a configured name.
 static int resolve_relay(const char *tok) {
     if (!tok || !tok[0]) return -1;
-    bool numeric = true;
-    for (const char *c = tok; *c; c++)
-        if (*c < '0' || *c > '9') {
-            numeric = false;
-            break;
-        }
-    if (numeric) {
-        int n = atoi(tok);
-        return (n >= 1 && n <= RELAY_COUNT) ? n - 1 : -1;
-    }
+    uint32_t n;
+    if (parse_u32(tok, &n))
+        return (n >= 1 && n <= RELAY_COUNT) ? (int)(n - 1) : -1;
     for (int i = 0; i < RELAY_COUNT; i++)
         if (g_settings.relay_name[i][0] &&
             strcmp(g_settings.relay_name[i], tok) == 0)
@@ -120,11 +125,11 @@ static void print_help(void) {
         "  help                        show this text\r\n");
 }
 
-// Perform an action on an already-resolved relay. The next strtok tokens are
-// the action and (for pulse) its argument. Shared by "relay <id> ..." and the
-// bare "<name> ..." shorthand.
-static void relay_action(int idx) {
-    char *a_cmd = strtok(NULL, " \t");
+// Perform an action on an already-resolved relay. The remaining tokens (the
+// action and, for pulse, its argument) are pulled from the caller's tokenizer
+// state. Shared by "relay <id> ..." and the bare "<name> ..." shorthand.
+static void relay_action(int idx, char **sp) {
+    char *a_cmd = strtok_r(NULL, " \t", sp);
     if (!a_cmd) {
         cdc_print("error: usage '<relay> on|off|toggle|pulse <ms>'\r\n");
         return;
@@ -144,23 +149,23 @@ static void relay_action(int idx) {
                    relay_state[idx] ? "on" : "off");
         cdc_print("ok\r\n");
     } else if (strcmp(a_cmd, "pulse") == 0) {
-        char *a_ms = strtok(NULL, " \t");
-        int ms = a_ms ? atoi(a_ms) : 0;
-        if (ms <= 0) {
+        char *a_ms = strtok_r(NULL, " \t", sp);
+        uint32_t ms;
+        if (!a_ms || !parse_u32(a_ms, &ms) || ms == 0) {
             cdc_print("error: pulse needs ms > 0\r\n");
             return;
         }
         apply_relay(idx, true);
         add_alarm_in_ms(ms, pulse_off_cb, (void *)(uintptr_t)idx, true);
-        dbg_printf("relay %d -> pulse %d ms\r\n", idx + 1, ms);
+        dbg_printf("relay %d -> pulse %lu ms\r\n", idx + 1, (unsigned long)ms);
         cdc_print("ok\r\n");
     } else {
         cdc_print("error: unknown relay command\r\n");
     }
 }
 
-static void cmd_relay(void) {
-    char *a_id = strtok(NULL, " \t");
+static void cmd_relay(char **sp) {
+    char *a_id = strtok_r(NULL, " \t", sp);
     if (!a_id) {
         cdc_print("error: usage 'relay <id> on|off|toggle|pulse <ms>'\r\n");
         return;
@@ -170,28 +175,28 @@ static void cmd_relay(void) {
         cdc_print("error: unknown relay\r\n");
         return;
     }
-    relay_action(idx);
+    relay_action(idx, sp);
 }
 
 // Command words that a relay name must not shadow (they are matched first).
 static bool is_reserved_word(const char *w) {
     static const char *const reserved[] = {
-        "relay", "name",    "set",  "save", "status",
+        "relay", "name",    "set",   "save", "status",
         "help",  "bootsel", "reset", "factory-reset"};
     for (size_t i = 0; i < sizeof(reserved) / sizeof(reserved[0]); i++)
         if (strcmp(w, reserved[i]) == 0) return true;
     return false;
 }
 
-static void cmd_name(void) {
-    char *a_n = strtok(NULL, " \t");
-    char *a_alias = strtok(NULL, " \t");
+static void cmd_name(char **sp) {
+    char *a_n = strtok_r(NULL, " \t", sp);
+    char *a_alias = strtok_r(NULL, " \t", sp);
     if (!a_n || !a_alias) {
         cdc_print("error: usage 'name <n> <alias|clear>'\r\n");
         return;
     }
-    int n = atoi(a_n);
-    if (n < 1 || n > RELAY_COUNT) {
+    uint32_t n;
+    if (!parse_u32(a_n, &n) || n < 1 || n > RELAY_COUNT) {
         cdc_print("error: relay number out of range\r\n");
         return;
     }
@@ -199,18 +204,17 @@ static void cmd_name(void) {
     if (strcmp(a_alias, "clear") == 0) {
         dst[0] = '\0';
     } else {
-        bool numeric = true;
-        for (char *c = a_alias; *c; c++)
-            if (*c < '0' || *c > '9') {
-                numeric = false;
-                break;
-            }
-        if (numeric) {
+        uint32_t tmp;
+        if (parse_u32(a_alias, &tmp)) {
             cdc_print("error: name cannot be all digits\r\n");
             return;
         }
         if (is_reserved_word(a_alias)) {
             cdc_print("error: name collides with a command word\r\n");
+            return;
+        }
+        if (strlen(a_alias) >= RELAY_NAME_MAX) {
+            cdc_print("error: name too long\r\n");
             return;
         }
         strncpy(dst, a_alias, RELAY_NAME_MAX - 1);
@@ -220,20 +224,20 @@ static void cmd_name(void) {
     cdc_print("ok\r\n");
 }
 
-static void cmd_set(void) {
-    char *what = strtok(NULL, " \t");
-    char *val = strtok(NULL, " \t");
+static void cmd_set(char **sp) {
+    char *what = strtok_r(NULL, " \t", sp);
+    char *val = strtok_r(NULL, " \t", sp);
     if (!what || !val) {
         cdc_print("error: usage 'set baud <n>' | 'set format <8N1>'\r\n");
         return;
     }
     if (strcmp(what, "baud") == 0) {
-        int b = atoi(val);
-        if (b < 50 || b > 4000000) {
+        uint32_t b;
+        if (!parse_u32(val, &b) || b < 50 || b > 4000000) {
             cdc_print("error: baud out of range (50..4000000)\r\n");
             return;
         }
-        g_settings.baud = (uint32_t)b;
+        g_settings.baud = b;
         dirty = true;
         cdc_print("ok (effective after 'save' + reboot)\r\n");
     } else if (strcmp(what, "format") == 0) {
@@ -283,7 +287,8 @@ static void cmd_save(void) {
 }
 
 static void parse_line(char *s) {
-    char *tok = strtok(s, " \t");
+    char *sp = NULL;
+    char *tok = strtok_r(s, " \t", &sp);
     if (!tok) return;
 
     if (strcmp(tok, "help") == 0) {
@@ -291,15 +296,15 @@ static void parse_line(char *s) {
     } else if (strcmp(tok, "status") == 0) {
         print_status();
     } else if (strcmp(tok, "relay") == 0) {
-        cmd_relay();
+        cmd_relay(&sp);
     } else if (strcmp(tok, "name") == 0) {
-        cmd_name();
+        cmd_name(&sp);
     } else if (strcmp(tok, "set") == 0) {
-        cmd_set();
+        cmd_set(&sp);
     } else if (strcmp(tok, "save") == 0) {
         cmd_save();
     } else if (strcmp(tok, "factory-reset") == 0) {
-        char *a = strtok(NULL, " \t");
+        char *a = strtok_r(NULL, " \t", &sp);
         if (!a || strcmp(a, "confirm") != 0) {
             cdc_print("error: 'factory-reset confirm' erases all saved settings\r\n");
         } else {
@@ -317,7 +322,7 @@ static void parse_line(char *s) {
         // e.g. "pump on" == "relay pump on".
         int idx = resolve_relay(tok);
         if (idx >= 0)
-            relay_action(idx);
+            relay_action(idx, &sp);
         else
             cdc_print("error: unknown command (try 'help')\r\n");
     }

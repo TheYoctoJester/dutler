@@ -36,4 +36,10 @@
 // ---- Activity LED ---------------------------------------------------
 #define LED_PIN PICO_DEFAULT_LED_PIN  // GP25 on a stock Pico
 
+// ---- Reset behaviour ------------------------------------------------
+// Opening the DEBUG port at 1200 baud reboots into the USB bootloader (the
+// classic "1200-baud touch"). Set to 0 to disable; the explicit 'bootsel'
+// command on the relay port always works regardless.
+#define ENABLE_BAUD_TOUCH_RESET 1
+
 #endif  // CONFIG_H
