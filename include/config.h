@@ -9,6 +9,12 @@
 //  All the knobs you are likely to change live here.
 // =====================================================================
 
+// Firmware version — normally injected by CMake (git describe). Fallback for
+// builds that don't set it (e.g. the host unit tests).
+#ifndef DUTLER_VERSION
+#define DUTLER_VERSION "unknown"
+#endif
+
 // ---- USB identity ---------------------------------------------------
 // Development / test identifiers only (pid.codes test VID/PID).
 // Obtain your own VID/PID before distributing hardware.
