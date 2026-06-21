@@ -55,14 +55,6 @@ void relay_init(void) {
     }
 }
 
-// Fired from a timer IRQ to release a pulsed relay.
-static int64_t pulse_off_cb(alarm_id_t id, void *user_data) {
-    (void)id;
-    uint8_t idx = (uint8_t)(uintptr_t)user_data;
-    if (idx < RELAY_COUNT) apply_relay(idx, false);
-    return 0;  // one-shot
-}
-
 // Resolve a relay reference: a 1-based number or a configured name.
 static int resolve_relay(const char *tok) {
     if (!tok || !tok[0]) return -1;
@@ -117,8 +109,7 @@ static void print_help(void) {
         "USB-UART-Relay control port\r\n"
         "commands (newline-terminated):\r\n"
         "  relay <id> on|off|toggle    id = number 1.. or a name\r\n"
-        "  relay <id> pulse <ms>       on for <ms> then auto-off\r\n"
-        "  <id> on|off|toggle|pulse    shorthand: drop the 'relay' keyword\r\n"
+        "  <id> on|off|toggle          shorthand: drop the 'relay' keyword\r\n"
         "  name <n> <alias|clear>      label relay n\r\n"
         "  set baud <n>                bridge boot baud rate\r\n"
         "  set format <8N1>            bridge boot data/parity/stop\r\n"
@@ -130,13 +121,13 @@ static void print_help(void) {
         "  help                        show this text\r\n");
 }
 
-// Perform an action on an already-resolved relay. The remaining tokens (the
-// action and, for pulse, its argument) are pulled from the caller's tokenizer
-// state. Shared by "relay <id> ..." and the bare "<name> ..." shorthand.
+// Perform an action on an already-resolved relay. The action token is pulled
+// from the caller's tokenizer state. Shared by "relay <id> ..." and the bare
+// "<name> ..." shorthand.
 static void relay_action(int idx, char **sp) {
     char *a_cmd = strtok_r(NULL, " \t", sp);
     if (!a_cmd) {
-        cdc_print("error: usage '<relay> on|off|toggle|pulse <ms>'\r\n");
+        cdc_print("error: usage '<relay> on|off|toggle'\r\n");
         return;
     }
 
@@ -153,17 +144,6 @@ static void relay_action(int idx, char **sp) {
         dbg_printf("relay %d -> %s (toggle)\r\n", idx + 1,
                    relay_state[idx] ? "on" : "off");
         cdc_print("ok\r\n");
-    } else if (strcmp(a_cmd, "pulse") == 0) {
-        char *a_ms = strtok_r(NULL, " \t", sp);
-        uint32_t ms;
-        if (!a_ms || !parse_u32(a_ms, &ms) || ms == 0) {
-            cdc_print("error: pulse needs ms > 0\r\n");
-            return;
-        }
-        apply_relay(idx, true);
-        add_alarm_in_ms(ms, pulse_off_cb, (void *)(uintptr_t)idx, true);
-        dbg_printf("relay %d -> pulse %lu ms\r\n", idx + 1, (unsigned long)ms);
-        cdc_print("ok\r\n");
     } else {
         cdc_print("error: unknown relay command\r\n");
     }
@@ -172,7 +152,7 @@ static void relay_action(int idx, char **sp) {
 static void cmd_relay(char **sp) {
     char *a_id = strtok_r(NULL, " \t", sp);
     if (!a_id) {
-        cdc_print("error: usage 'relay <id> on|off|toggle|pulse <ms>'\r\n");
+        cdc_print("error: usage 'relay <id> on|off|toggle'\r\n");
         return;
     }
     int idx = resolve_relay(a_id);
