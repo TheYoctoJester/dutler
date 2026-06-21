@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "settings.h"  // settings_t, RELAY_COUNT, RELAY_NAME_MAX
+#include "settings.h"  // settings_t, OUT_COUNT, OUT_NAME_MAX
 
 // Pure (de)serialization of a settings record — no flash / SDK dependency, so it
 // is unit-testable on the host. settings.c owns the flash I/O and slot logic.
