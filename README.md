@@ -14,8 +14,9 @@ Over a single USB cable, DUTler gives you the two things that loop always needs:
 
 - a **serial console** to the device — a genuine USB-to-UART bridge with the host baud rate
   mirrored onto the hardware UART; and
-- **power / GPIO control** — relays to power-cycle the DUT, or yank it into a recovery/bootloader
-  mode, when an update leaves it unresponsive;
+- **power and control lines** — a relay to switch DUT power, plus low-side MOSFET drivers to
+  assert the board's boot-mode/strapping and reset pins, so you can power-cycle it and drop it
+  into a recovery/bootloader mode when an update leaves it unresponsive;
 
 plus a separate **firmware debug log**, so DUTler's own diagnostics never pollute the device
 console.
@@ -30,11 +31,11 @@ The firmware makes a stock Pico enumerate as **three USB serial ports**:
 | USB port | Purpose |
 |----------|---------|
 | **CDC0 — "UART Bridge"** | Transparent USB ↔ hardware-UART bridge (a real USB-serial adapter; host baud rate is mirrored onto the UART). |
-| **CDC1 — "Relay Control"** | Newline-terminated text commands to switch relay GPIOs. |
+| **CDC1 — "Relay Control"** | Newline-terminated commands to switch the DUT control outputs — a power relay plus MOSFET strap/reset drivers. |
 | **CDC2 — "Debug Log"** | Read-only firmware log stream (open it to start receiving; output is dropped when nobody is listening). |
 
 On macOS these enumerate as three ports, e.g. `usbmodemXXX1` (bridge), `usbmodemXXX3`
-(relay), `usbmodemXXX5` (debug log).
+(control), `usbmodemXXX5` (debug log).
 
 ## Wiring (defaults, see `include/config.h`)
 
@@ -42,12 +43,23 @@ On macOS these enumerate as three ports, e.g. `usbmodemXXX1` (bridge), `usbmodem
 |----------|-----|
 | Bridge UART TX | GP0 → device RX |
 | Bridge UART RX | GP1 ← device TX |
-| Relay 1..4 | GP2, GP3, GP4, GP5 (active-high, **OFF at boot**) |
+| Control out 1 — power relay | GP2 — switch DUT power |
+| Control out 2–4 — MOSFET | GP3, GP4, GP5 — assert DUT strap/boot-mode & reset pins |
 | Activity LED | GP25 (on-board) |
-| GND | any GND pin — **share ground with the UART peer and relay board** |
+| GND | any GND pin — **share ground with the DUT and any relay/MOSFET board** |
 
-Relays are driven at 3.3 V logic. Use a relay **module** with its own driver/opto stage
-(do not switch a coil directly from a GPIO). For active-low boards set `RELAY_ACTIVE_LOW 1`.
+All control outputs are 3.3 V logic, **active-high, and OFF at boot**. In firmware they're just
+generic switched GPIOs (all driven via the `relay`/name commands); their *intended* roles are:
+
+- **Out 1 → a power relay** — to cut/restore DUT power. Use a relay **module** with its own
+  driver/opto stage; don't switch a coil straight off a GPIO.
+- **Outs 2–4 → low-side MOSFET gates** — to pull the DUT's strapping/boot-mode and reset lines
+  (e.g. force USB/serial download mode, then toggle reset). The MOSFET does the level shift and
+  the pull; the GPIO only drives its gate. Match the DUT's logic level and share ground.
+
+Tip: alias the outputs to their jobs once and drive them by name —
+`name 1 power`, `name 2 bootmode`, `name 3 reset`, then `power off` / `bootmode on` / `reset on`.
+Count, pins and polarity live in `include/config.h` (`RELAY_*`); `RELAY_ACTIVE_LOW 1` flips sense.
 
 ## Build
 
