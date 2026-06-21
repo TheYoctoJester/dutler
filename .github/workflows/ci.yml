@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Northern.tech-Commercial
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build firmware (RP2040)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          # libusb-1.0-0-dev lets the Pico SDK auto-build picotool (needed for the .uf2)
+          sudo apt-get install -y cmake ninja-build libusb-1.0-0-dev
+
+      - name: Install Arm GNU toolchain (14.2.Rel1)
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: "14.2.Rel1"
+
+      - name: Fetch Pico SDK 2.2.0
+        run: |
+          git clone --branch 2.2.0 --depth 1 https://github.com/raspberrypi/pico-sdk.git "$HOME/pico-sdk"
+          # Only TinyUSB is needed for this firmware (USB device stack).
+          git -C "$HOME/pico-sdk" submodule update --init --depth 1 lib/tinyusb
+          echo "PICO_SDK_PATH=$HOME/pico-sdk" >> "$GITHUB_ENV"
+
+      - name: Configure
+        # Toolchain is on PATH (so no PICO_TOOLCHAIN_PATH needed); the SDK builds
+        # picotool itself. env.sh isn't sourced — CI pins everything explicitly.
+        run: cmake -S . -B build -G Ninja -DPICO_SDK_PATH="$PICO_SDK_PATH"
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dutler-firmware
+          path: |
+            build/dutler.uf2
+            build/dutler.elf
+          if-no-files-found: error
