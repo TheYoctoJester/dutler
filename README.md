@@ -1,16 +1,31 @@
 # DUTler 🎩
 
-**A bench butler for your Device Under Test.** DUTler is open-source firmware for a Raspberry
-Pi Pico (RP2040) that turns a ~$4 board into a sidecar/companion for OS-level integration work —
-the kind of bring-up, update and recovery loops you hit with **Mender + Yocto** (but it's not
-tied to either). It hands you the two things you always reach for at a test bench over a single
-USB cable: a **serial console** to the DUT, and a **power/GPIO switch** to cycle or recover it
-when an image bricks it mid-update — plus a separate firmware **debug log**.
+> **A bench butler for your Device Under Test.**
+> Sponsored by [Northern.tech](https://northern.tech) as part of the
+> [Mender.io](https://mender.io) community engagement.
 
+DUTler is open-source firmware that turns a ~$4 **Raspberry Pi Pico (RP2040)** into a small,
+always-there sidecar for **OS-level integration work** — building, flashing, updating, and
+*recovering* embedded-Linux devices. It targets the loop you actually live in when doing
+**Yocto** builds and **Mender** over-the-air updates: flash an image, watch it boot, and — when
+one wedges the board mid-update — get it back **without walking over to the bench**.
+
+Over a single USB cable, DUTler gives you the two things that loop always needs:
+
+- a **serial console** to the device — a genuine USB-to-UART bridge with the host baud rate
+  mirrored onto the hardware UART; and
+- **power / GPIO control** — relays to power-cycle the DUT, or yank it into a recovery/bootloader
+  mode, when an update leaves it unresponsive;
+
+plus a separate **firmware debug log**, so DUTler's own diagnostics never pollute the device
+console.
+
+It's built for Mender + Yocto bring-up and **CI / hardware-in-the-loop** rigs, but nothing about
+it is Mender-specific — it's a generic console-plus-power companion for *any* board under test.
 The name is *DUT* (Device Under Test) + *butler*: it quietly attends your board, serves up the
 console, and flips the power when asked.
 
-Firmware that makes a stock Pico enumerate as **two USB serial ports**:
+The firmware makes a stock Pico enumerate as **three USB serial ports**:
 
 | USB port | Purpose |
 |----------|---------|
@@ -192,5 +207,12 @@ interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 Third-party components are under their own permissive licenses and are *not* relicensed: the
 Raspberry Pi **Pico SDK** (BSD-3-Clause) and **TinyUSB** (MIT), pulled in at build time.
 
-© the DUTler contributors. "Mender" and the moose are trademarks of their respective owner;
-DUTler is an independent project and not affiliated with or endorsed by them.
+## Acknowledgements
+
+DUTler is **sponsored by [Northern.tech](https://northern.tech) as part of the
+[Mender.io](https://mender.io) community engagement** — thank you for backing open tooling for
+the embedded-Linux community. Thanks also to the Raspberry Pi Pico SDK and TinyUSB projects,
+which do the heavy USB lifting.
+
+> "Mender", "Northern.tech", and the Mender moose are trademarks of Northern.tech AS. They are
+> used here only to describe the project's purpose and the integration workflow it serves.
