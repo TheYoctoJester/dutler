@@ -8,12 +8,13 @@
 #include "tusb.h"
 
 // =====================================================================
-//  USB descriptors for a composite device exposing TWO CDC-ACM ports.
-//  CDC0 = transparent UART bridge, CDC1 = relay command channel.
+//  USB descriptors for a composite device exposing THREE CDC-ACM ports.
+//  CDC0 = transparent UART bridge, CDC1 = relay command channel,
+//  CDC2 = read-only firmware debug log.
 // =====================================================================
 
 // ---- Device descriptor ----
-// Class set to "Misc / IAD" so the host treats the two CDC functions as
+// Class set to "Misc / IAD" so the host treats the three CDC functions as
 // one composite device.
 static const tusb_desc_device_t desc_device = {
     .bLength = sizeof(tusb_desc_device_t),

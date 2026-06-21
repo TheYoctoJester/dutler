@@ -5,7 +5,7 @@
 #define CONFIG_H
 
 // =====================================================================
-//  Build-time configuration for the USB-UART + Relay adapter (RP2040)
+//  Build-time configuration for DUTler (RP2040 firmware).
 //  All the knobs you are likely to change live here.
 // =====================================================================
 
