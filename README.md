@@ -108,6 +108,15 @@ blip can never silently re-energize a load. Implemented in `src/settings.c`
 (struct, CRC32, flash erase/program) — note flash writes briefly mask interrupts (a few ms),
 so avoid `save` in the middle of heavy bridge traffic.
 
+## Watchdog
+
+A hardware watchdog (`WATCHDOG_TIMEOUT_MS` in `config.h`, default 2 s) is fed every main-loop
+iteration, so a wedged loop (e.g. a hung USB stack) reboots and recovers automatically. The
+`save` path feeds it just before the interrupts-masked flash erase, which is the longest
+blocking section. At boot the firmware records whether the reset was a real watchdog timeout
+(via `watchdog_enable_caused_reboot()`, which ignores deliberate `bootsel`/reflash reboots)
+and `status` reports it. Relay outputs always come up OFF after any reset.
+
 ## Layout
 
 ```
