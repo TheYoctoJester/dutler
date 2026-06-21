@@ -1,5 +1,9 @@
 # DUTler 🎩
 
+[![Platform: RP2040](https://img.shields.io/badge/platform-RP2040-8a2be2.svg)](https://www.raspberrypi.com/products/raspberry-pi-pico/)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome%20(DCO)-brightgreen.svg)](CONTRIBUTING.md)
+
 > **A bench butler for your Device Under Test.**
 > Sponsored by [Northern.tech](https://northern.tech) as part of the
 > [Mender.io](https://mender.io) community engagement.
