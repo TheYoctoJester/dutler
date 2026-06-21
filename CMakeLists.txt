@@ -49,7 +49,7 @@ add_executable(dutler
     src/main.c
     src/usb_descriptors.c
     src/bridge.c
-    src/relay.c
+    src/out.c
     src/debug.c
     src/settings.c
     src/settings_codec.c
@@ -85,7 +85,7 @@ target_link_libraries(dutler
 # Binary metadata — shown by `picotool info`.
 pico_set_program_name(dutler "DUTler")
 pico_set_program_version(dutler "${DUTLER_VERSION}")
-pico_set_program_description(dutler "USB-UART bridge + relay/strap/reset control for a DUT")
+pico_set_program_description(dutler "USB-UART bridge + power/strap/reset control for a DUT")
 pico_set_program_url(dutler "https://github.com/TheYoctoJester/dutler")
 
 # Emit .uf2 / .bin / .hex / map alongside the .elf.

@@ -24,7 +24,7 @@
 
 // ---- CDC interface indices (which serial port is which) -------------
 #define CDC_ITF_BRIDGE 0  // transparent USB <-> hardware-UART bridge
-#define CDC_ITF_RELAY 1   // text command channel for the control outputs
+#define CDC_ITF_OUT 1     // text command channel for the control outputs
 #define CDC_ITF_DEBUG 2   // firmware debug-log output (read-only stream)
 
 // ---- UART bridge ----------------------------------------------------
@@ -35,13 +35,12 @@
 #define BRIDGE_INIT_BAUD 115200
 
 // ---- Control outputs (power relay + MOSFET strap/reset drivers) -----
-// Exposed as `out 1..RELAY_COUNT` on the control port. (The RELAY_* macro names
-// are kept for compatibility.)
-#define RELAY_COUNT 4
-// GPIO pins for outputs 1..RELAY_COUNT. Avoid GP0/GP1 (bridge UART).
-#define RELAY_PINS {2, 3, 4, 5}
+// Exposed as `out 1..OUT_COUNT` on the control port.
+#define OUT_COUNT 4
+// GPIO pins for outputs 1..OUT_COUNT. Avoid GP0/GP1 (bridge UART).
+#define OUT_PINS {2, 3, 4, 5}
 // Set to 1 if an output is active-low (driven LOW = asserted/energized).
-#define RELAY_ACTIVE_LOW 0
+#define OUT_ACTIVE_LOW 0
 
 // ---- Activity LED ---------------------------------------------------
 #define LED_PIN PICO_DEFAULT_LED_PIN  // GP25 on a stock Pico

@@ -122,7 +122,7 @@ generic switched GPIOs (all driven via the `out`/`name` commands); their *intend
 
 Tip: alias the outputs to their jobs once and drive them by name —
 `name 1 power`, `name 2 bootmode`, `name 3 reset`, then `power off` / `bootmode on` / `reset on`.
-Count, pins and polarity live in `include/config.h` (`RELAY_*`); `RELAY_ACTIVE_LOW 1` flips sense.
+Count, pins and polarity live in `include/config.h` (`OUT_*`); `OUT_ACTIVE_LOW 1` flips sense.
 
 ## Build
 
@@ -264,18 +264,18 @@ DUTler/
 ├── pico_sdk_import.cmake
 ├── include/config.h       # pins, output count/polarity, UART, USB IDs — main knobs
 ├── src/
-│   ├── main.c             # init + super-loop (tud_task / bridge / relay)
+│   ├── main.c             # init + super-loop (tud_task / bridge / out)
 │   ├── tusb_config.h      # TinyUSB: 3× CDC, full-speed device
 │   ├── usb_descriptors.c  # composite triple-CDC descriptors + chip-ID serial
 │   ├── bridge.c/.h        # CDC0 <-> uart0, IRQ RX ring buffer, line-coding sync
-│   ├── relay.c/.h         # CDC1 command parser -> GPIO
+│   ├── out.c/.h           # CDC1 command parser -> GPIO outputs
 │   ├── debug.c/.h         # dbg_printf() -> CDC2 debug-log port
 │   ├── settings.c/.h      # power-loss-safe A/B flash settings (flash I/O + slots)
 │   ├── settings_codec.c/.h # pure record (de)serialization — unit-tested
 │   ├── crc32.c/.h         # pure CRC-32 — unit-tested
 │   └── parse.c/.h         # pure integer parsing — unit-tested
 ├── tests/                 # host unit tests (native build, no SDK) + CMakeLists
-├── tools/                 # host-side test/util scripts (loopback, relay, reset, debug)
+├── tools/                 # host-side test/util scripts (loopback, out, reset, debug)
 └── hardware/              # (future) open-hardware carrier board — see hardware/README.md
 ```
 

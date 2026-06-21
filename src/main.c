@@ -5,8 +5,8 @@
 #include "config.h"
 #include "debug.h"
 #include "hardware/watchdog.h"
+#include "out.h"
 #include "pico/stdlib.h"
-#include "relay.h"
 #include "settings.h"
 #include "tusb.h"
 
@@ -29,7 +29,7 @@ int main(void) {
     settings_load();  // before bridge_init: provides the boot UART defaults
     tusb_init();
     bridge_init();
-    relay_init();
+    out_init();
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
@@ -48,7 +48,7 @@ int main(void) {
 
         tud_task();     // TinyUSB device stack
         bridge_task();  // CDC0 <-> UART
-        relay_task();   // CDC1 command parser
+        out_task();     // CDC1 command parser
 
         // Heartbeat so it's visibly alive even with no traffic.
         if (time_reached(next_blink)) {

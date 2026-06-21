@@ -48,11 +48,11 @@ _Static_assert(SETTINGS_RECORD_LEN <= FLASH_PAGE_SIZE, "settings record exceeds 
 static uint8_t active_slot;
 static uint32_t g_seq;
 
-// Force every relay name to be NUL-terminated. Defense-in-depth: the write path
+// Force every output name to be NUL-terminated. Defense-in-depth: the write path
 // always terminates and the CRC guards corruption, but downstream strlen/strcmp/
 // "%s" must never over-read past a name field. Call after any load.
 static void terminate_names(void) {
-    for (int i = 0; i < RELAY_COUNT; i++) g_settings.relay_name[i][RELAY_NAME_MAX - 1] = '\0';
+    for (int i = 0; i < OUT_COUNT; i++) g_settings.out_name[i][OUT_NAME_MAX - 1] = '\0';
 }
 
 static void load_defaults(void) {
@@ -61,7 +61,7 @@ static void load_defaults(void) {
     g_settings.data_bits = 8;
     g_settings.parity = 0;
     g_settings.stop_bits = 1;
-    // relay_name[] left as empty strings
+    // out_name[] left as empty strings
 }
 
 void settings_load(void) {

@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Northern.tech-Commercial
 
-#ifndef RELAY_H
-#define RELAY_H
+#ifndef OUT_H
+#define OUT_H
 
 // Output control command channel on USB-CDC port 1 (newline-terminated text).
-void relay_init(void);
-void relay_task(void);
+void out_init(void);
+void out_task(void);
 
-#endif  // RELAY_H
+#endif  // OUT_H

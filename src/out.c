@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-Northern.tech-Commercial
 
-#include "relay.h"
+#include "out.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -20,8 +20,8 @@
 
 extern bool g_boot_by_watchdog;  // defined in main.c
 
-static const uint8_t relay_pins[RELAY_COUNT] = RELAY_PINS;
-static bool relay_state[RELAY_COUNT];
+static const uint8_t out_pins[OUT_COUNT] = OUT_PINS;
+static bool out_state[OUT_COUNT];
 static bool dirty = false;  // unsaved settings changes
 
 #define LINE_MAX 80
@@ -29,39 +29,39 @@ static char line_buf[LINE_MAX];
 static uint8_t line_len = 0;
 
 static void cdc_print(const char *s) {
-    tud_cdc_n_write_str(CDC_ITF_RELAY, s);
-    tud_cdc_n_write_flush(CDC_ITF_RELAY);
+    tud_cdc_n_write_str(CDC_ITF_OUT, s);
+    tud_cdc_n_write_flush(CDC_ITF_OUT);
 }
 
-static void apply_relay(uint8_t idx, bool on) {
-    relay_state[idx] = on;
-    bool level = RELAY_ACTIVE_LOW ? !on : on;
-    gpio_put(relay_pins[idx], level);
+static void apply_out(uint8_t idx, bool on) {
+    out_state[idx] = on;
+    bool level = OUT_ACTIVE_LOW ? !on : on;
+    gpio_put(out_pins[idx], level);
 }
 
-void relay_init(void) {
-    for (uint8_t i = 0; i < RELAY_COUNT; i++) {
-        gpio_init(relay_pins[i]);
-        gpio_set_dir(relay_pins[i], GPIO_OUT);
-        apply_relay(i, false);  // always OFF at power-on (safe state)
+void out_init(void) {
+    for (uint8_t i = 0; i < OUT_COUNT; i++) {
+        gpio_init(out_pins[i]);
+        gpio_set_dir(out_pins[i], GPIO_OUT);
+        apply_out(i, false);  // always OFF at power-on (safe state)
     }
 }
 
 // Resolve an output reference: a 1-based number or a configured name.
-static int resolve_relay(const char *tok) {
+static int resolve_out(const char *tok) {
     if (!tok || !tok[0]) return -1;
     uint32_t n;
-    if (parse_u32(tok, &n)) return (n >= 1 && n <= RELAY_COUNT) ? (int)(n - 1) : -1;
-    for (int i = 0; i < RELAY_COUNT; i++)
-        if (g_settings.relay_name[i][0] && strcmp(g_settings.relay_name[i], tok) == 0) return i;
+    if (parse_u32(tok, &n)) return (n >= 1 && n <= OUT_COUNT) ? (int)(n - 1) : -1;
+    for (int i = 0; i < OUT_COUNT; i++)
+        if (g_settings.out_name[i][0] && strcmp(g_settings.out_name[i], tok) == 0) return i;
     return -1;
 }
 
 static void print_status(void) {
     char msg[64];
-    for (uint8_t i = 0; i < RELAY_COUNT; i++) {
-        const char *nm = g_settings.relay_name[i];
-        const char *st = relay_state[i] ? "on" : "off";
+    for (uint8_t i = 0; i < OUT_COUNT; i++) {
+        const char *nm = g_settings.out_name[i];
+        const char *st = out_state[i] ? "on" : "off";
         if (nm[0])
             snprintf(msg, sizeof(msg), "out %u (%s) %s\r\n", i + 1, nm, st);
         else
@@ -85,7 +85,7 @@ static void print_banner(void) {
 void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
     (void)rts;
     static bool was_open = false;
-    if (itf != CDC_ITF_RELAY) return;
+    if (itf != CDC_ITF_OUT) return;
     if (dtr && !was_open) {
         line_len = 0;  // discard any half-typed line from a previous session
         print_banner();
@@ -114,7 +114,7 @@ static void print_help(void) {
 // Perform an action on an already-resolved output. The action token is pulled
 // from the caller's tokenizer state. Shared by "out <id> ..." and the bare
 // "<name> ..." shorthand.
-static void relay_action(int idx, char **sp) {
+static void out_action(int idx, char **sp) {
     char *a_cmd = strtok_r(NULL, " \t", sp);
     if (!a_cmd) {
         cdc_print("error: usage '<output> on|off|toggle'\r\n");
@@ -122,34 +122,34 @@ static void relay_action(int idx, char **sp) {
     }
 
     if (strcmp(a_cmd, "on") == 0) {
-        apply_relay(idx, true);
+        apply_out(idx, true);
         dbg_printf("out %d -> on\r\n", idx + 1);
         cdc_print("ok\r\n");
     } else if (strcmp(a_cmd, "off") == 0) {
-        apply_relay(idx, false);
+        apply_out(idx, false);
         dbg_printf("out %d -> off\r\n", idx + 1);
         cdc_print("ok\r\n");
     } else if (strcmp(a_cmd, "toggle") == 0) {
-        apply_relay(idx, !relay_state[idx]);
-        dbg_printf("out %d -> %s (toggle)\r\n", idx + 1, relay_state[idx] ? "on" : "off");
+        apply_out(idx, !out_state[idx]);
+        dbg_printf("out %d -> %s (toggle)\r\n", idx + 1, out_state[idx] ? "on" : "off");
         cdc_print("ok\r\n");
     } else {
         cdc_print("error: unknown output command\r\n");
     }
 }
 
-static void cmd_relay(char **sp) {
+static void cmd_out(char **sp) {
     char *a_id = strtok_r(NULL, " \t", sp);
     if (!a_id) {
         cdc_print("error: usage 'out <id> on|off|toggle'\r\n");
         return;
     }
-    int idx = resolve_relay(a_id);
+    int idx = resolve_out(a_id);
     if (idx < 0) {
         cdc_print("error: unknown output\r\n");
         return;
     }
-    relay_action(idx, sp);
+    out_action(idx, sp);
 }
 
 // Command words that an output name must not shadow (they are matched first).
@@ -169,11 +169,11 @@ static void cmd_name(char **sp) {
         return;
     }
     uint32_t n;
-    if (!parse_u32(a_n, &n) || n < 1 || n > RELAY_COUNT) {
+    if (!parse_u32(a_n, &n) || n < 1 || n > OUT_COUNT) {
         cdc_print("error: output number out of range\r\n");
         return;
     }
-    char *dst = g_settings.relay_name[n - 1];
+    char *dst = g_settings.out_name[n - 1];
     if (strcmp(a_alias, "clear") == 0) {
         dst[0] = '\0';
     } else {
@@ -186,12 +186,12 @@ static void cmd_name(char **sp) {
             cdc_print("error: name collides with a command word\r\n");
             return;
         }
-        if (strlen(a_alias) >= RELAY_NAME_MAX) {
+        if (strlen(a_alias) >= OUT_NAME_MAX) {
             cdc_print("error: name too long\r\n");
             return;
         }
-        strncpy(dst, a_alias, RELAY_NAME_MAX - 1);
-        dst[RELAY_NAME_MAX - 1] = '\0';
+        strncpy(dst, a_alias, OUT_NAME_MAX - 1);
+        dst[OUT_NAME_MAX - 1] = '\0';
     }
     dirty = true;
     cdc_print("ok\r\n");
@@ -269,7 +269,7 @@ static void parse_line(char *s) {
     } else if (strcmp(tok, "status") == 0) {
         print_status();
     } else if (strcmp(tok, "out") == 0) {
-        cmd_relay(&sp);
+        cmd_out(&sp);
     } else if (strcmp(tok, "name") == 0) {
         cmd_name(&sp);
     } else if (strcmp(tok, "set") == 0) {
@@ -298,17 +298,17 @@ static void parse_line(char *s) {
     } else {
         // Shorthand: an output number or configured name used as a verb,
         // e.g. "pump on" == "out pump on".
-        int idx = resolve_relay(tok);
+        int idx = resolve_out(tok);
         if (idx >= 0)
-            relay_action(idx, &sp);
+            out_action(idx, &sp);
         else
             cdc_print("error: unknown command (try 'help')\r\n");
     }
 }
 
-void relay_task(void) {
-    while (tud_cdc_n_available(CDC_ITF_RELAY)) {
-        int ch = tud_cdc_n_read_char(CDC_ITF_RELAY);
+void out_task(void) {
+    while (tud_cdc_n_available(CDC_ITF_OUT)) {
+        int ch = tud_cdc_n_read_char(CDC_ITF_OUT);
         if (ch < 0) break;
 
         if (ch == '\r' || ch == '\n') {
