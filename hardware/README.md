@@ -1,9 +1,13 @@
 # DUTler — Hardware (work in progress)
 
 This directory will hold the **open-source hardware** for a DUTler carrier/HAT: a small board
-that breaks the Pico out into bench-friendly connectors — the bridge UART (level-shifted),
-relay/MOSFET outputs with proper drivers + flyback protection, the GPIO pulls that keep relays
-safe at power-on, and labelled headers.
+that breaks the Pico out into bench-friendly connectors:
+
+- the **bridge UART** (level-shifted to the DUT's logic level);
+- one **power relay** (isolated, with flyback protection) to switch DUT power;
+- a few **low-side MOSFET drivers** for the DUT's strapping/boot-mode and reset lines;
+- the **GPIO pull resistors** that hold every output in its safe state at power-on; and
+- labelled headers.
 
 Nothing here yet — the firmware runs fine on a bare Pico with jumper wires (see the top-level
 README's *Wiring* section). This is a placeholder so the repo layout and licensing are ready
