@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Build and flash the firmware — button-free when the adapter is already running.
 #
 # If the firmware is running, it is asked (via the relay port's 'bootsel' command)

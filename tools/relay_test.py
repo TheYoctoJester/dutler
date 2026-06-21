@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 import os, sys, select, time, termios
 
 port = sys.argv[1] if len(sys.argv) > 1 else "/dev/cu.usbmodem1103"

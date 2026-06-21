@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 Northern.tech AS
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #ifndef CONFIG_H
 #define CONFIG_H
 

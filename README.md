@@ -222,6 +222,7 @@ and `status` reports it. Relay outputs always come up OFF after any reset.
 ```
 DUTler/
 ├── LICENSE                # firmware license: GPL-3.0-or-later
+├── THIRD_PARTY.md         # third-party components + their licenses
 ├── env.sh                 # self-contained build environment (source before building)
 ├── flash.sh               # build + picotool load
 ├── CMakeLists.txt
@@ -258,14 +259,17 @@ interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 
 ## License
 
+Copyright © 2026 Northern.tech AS and the DUTler contributors.
+
 - **Firmware** (this repo's `src/`, `include/`, build scripts): **GPL-3.0-or-later** — see
   [`LICENSE`](LICENSE). Copyleft: redistributed/modified firmware must stay GPL.
 - **Hardware** (future `hardware/`): intended to be **CERN-OHL-S-2.0** (strongly-reciprocal
   open hardware) — see `hardware/README.md`.
 - **Documentation** may be offered under **CC-BY-SA-4.0**.
 
-Third-party components are under their own permissive licenses and are *not* relicensed: the
-Raspberry Pi **Pico SDK** (BSD-3-Clause) and **TinyUSB** (MIT), pulled in at build time.
+Every source file carries an [SPDX](https://spdx.dev) license identifier. Third-party components
+keep their own licenses and are *not* relicensed (Pico SDK, TinyUSB, newlib, libgcc, …) — see
+[`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 ## Acknowledgements
 
