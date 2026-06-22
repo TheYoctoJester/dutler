@@ -11,6 +11,10 @@
 
 settings_t g_settings;
 
+char parity_to_char(uint8_t parity_code) {
+    return parity_code == 1 ? 'O' : parity_code == 2 ? 'E' : 'N';
+}
+
 /*
  * ============================================================================
  *  ON-FLASH SETTINGS  —  A/B (ping-pong), power-loss & wear safe

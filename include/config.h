@@ -33,6 +33,10 @@
 #define BRIDGE_TX_PIN 0  // GP0 -> UART0 TX
 #define BRIDGE_RX_PIN 1  // GP1 -> UART0 RX
 #define BRIDGE_INIT_BAUD 115200
+// Accepted range for `set baud`. Plain ints (no u suffix) so they can be
+// stringified into the error message — see cmd_set().
+#define BRIDGE_BAUD_MIN 50
+#define BRIDGE_BAUD_MAX 4000000
 
 // ---- Control outputs (power relay + MOSFET strap/reset drivers) -----
 // Exposed as `out 1..OUT_COUNT` on the control port.
@@ -60,11 +64,15 @@
 // command on the control port always works regardless.
 #define ENABLE_BAUD_TOUCH_RESET 1
 
-// ---- Watchdog -------------------------------------------------------
+// ---- Watchdog & heartbeat -------------------------------------------
 // Auto-reboot if the main loop stops feeding the watchdog for this long
 // (e.g. a wedged USB stack). Must exceed the worst-case blocking section,
 // which is the flash sector erase during a settings 'save' (hundreds of ms
 // with interrupts masked); the save path feeds the watchdog just before it.
 #define WATCHDOG_TIMEOUT_MS 2000
+// Activity-LED blink period; it also bounds the main loop's idle sleep, so the
+// watchdog is fed every HEARTBEAT_MS. MUST stay comfortably below
+// WATCHDOG_TIMEOUT_MS or an idle bus would trip the watchdog.
+#define HEARTBEAT_MS 500
 
 #endif  // CONFIG_H

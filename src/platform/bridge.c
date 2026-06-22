@@ -152,14 +152,15 @@ void tud_cdc_line_coding_cb(uint8_t itf, cdc_line_coding_t const *coding) {
 
     uint stop_bits = (coding->stop_bits == CDC_LINE_CODING_STOP_BITS_2) ? 2 : 1;
 
-    uart_parity_t parity = UART_PARITY_NONE;
-    if (coding->parity == CDC_LINE_CODING_PARITY_ODD) parity = UART_PARITY_ODD;
-    if (coding->parity == CDC_LINE_CODING_PARITY_EVEN) parity = UART_PARITY_EVEN;
+    uint8_t parity_code = 0;  // 0=none 1=odd 2=even (shared parity_enum/_to_char convention)
+    if (coding->parity == CDC_LINE_CODING_PARITY_ODD)
+        parity_code = 1;
+    else if (coding->parity == CDC_LINE_CODING_PARITY_EVEN)
+        parity_code = 2;
 
     if (coding->bit_rate) uart_set_baudrate(BRIDGE_UART, coding->bit_rate);
-    uart_set_format(BRIDGE_UART, data_bits, stop_bits, parity);
+    uart_set_format(BRIDGE_UART, data_bits, stop_bits, parity_enum(parity_code));
 
-    char pc = (parity == UART_PARITY_ODD) ? 'O' : (parity == UART_PARITY_EVEN) ? 'E' : 'N';
-    dbg_printf("bridge: line coding %lu baud %u%c%u\r\n", (unsigned long)coding->bit_rate,
-               data_bits, pc, stop_bits);
+    dbg_printf("bridge: line coding " UART_MODE_FMT "\r\n", (unsigned long)coding->bit_rate,
+               data_bits, parity_to_char(parity_code), stop_bits);
 }

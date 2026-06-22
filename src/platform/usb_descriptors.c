@@ -13,6 +13,19 @@
 //  CDC2 = read-only firmware debug log.
 // =====================================================================
 
+// String-descriptor indices — the single source shared by the device descriptor
+// (manufacturer/product/serial), the CDC interface descriptors, and
+// tud_descriptor_string_cb(). string_desc_arr[] below is laid out in this order.
+enum {
+    STRID_LANGID = 0,    // supported-language list
+    STRID_MANUFACTURER,  // 1
+    STRID_PRODUCT,       // 2
+    STRID_SERIAL,        // 3 — filled from the chip ID at runtime
+    STRID_CDC0,          // 4 — "UART Bridge"
+    STRID_CDC1,          // 5 — "Control"
+    STRID_CDC2,          // 6 — "Debug Log"
+};
+
 // ---- Device descriptor ----
 // Class set to "Misc / IAD" so the host treats the three CDC functions as
 // one composite device.
@@ -31,9 +44,9 @@ static const tusb_desc_device_t desc_device = {
     .idProduct = USB_PID,
     .bcdDevice = 0x0100,
 
-    .iManufacturer = 0x01,
-    .iProduct = 0x02,
-    .iSerialNumber = 0x03,
+    .iManufacturer = STRID_MANUFACTURER,
+    .iProduct = STRID_PRODUCT,
+    .iSerialNumber = STRID_SERIAL,
 
     .bNumConfigurations = 0x01,
 };
@@ -70,14 +83,17 @@ static uint8_t const desc_configuration[] = {
     // config number, interface count, string index, total length, attribute, power (mA)
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
 
-    // CDC 0 — UART bridge (interface string index 4)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, 4, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT, EPNUM_CDC_0_IN, 64),
+    // CDC 0 — UART bridge
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_0, STRID_CDC0, EPNUM_CDC_0_NOTIF, 8, EPNUM_CDC_0_OUT,
+                       EPNUM_CDC_0_IN, 64),
 
-    // CDC 1 — output control (interface string index 5)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, 5, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT, EPNUM_CDC_1_IN, 64),
+    // CDC 1 — output control
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_1, STRID_CDC1, EPNUM_CDC_1_NOTIF, 8, EPNUM_CDC_1_OUT,
+                       EPNUM_CDC_1_IN, 64),
 
-    // CDC 2 — debug log (interface string index 6)
-    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, 6, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT, EPNUM_CDC_2_IN, 64),
+    // CDC 2 — debug log
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC_2, STRID_CDC2, EPNUM_CDC_2_NOTIF, 8, EPNUM_CDC_2_OUT,
+                       EPNUM_CDC_2_IN, 64),
 };
 
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
@@ -120,7 +136,7 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
             return NULL;
         }
 
-        const char *str = (index == 3) ? get_serial() : string_desc_arr[index];
+        const char *str = (index == STRID_SERIAL) ? get_serial() : string_desc_arr[index];
         if (str == NULL) return NULL;
 
         chr_count = (uint8_t)strlen(str);

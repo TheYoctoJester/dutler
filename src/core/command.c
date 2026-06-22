@@ -19,46 +19,62 @@
 #include "tusb.h"
 #include "util/numparse.h"
 
+// Stringify, with macro expansion (so DUTLER_XSTR(BRIDGE_BAUD_MAX) -> "4000000").
+#define DUTLER_STR(x) #x
+#define DUTLER_XSTR(x) DUTLER_STR(x)
+
 extern bool g_boot_by_watchdog;  // defined in main.c
 
 static bool dirty = false;  // unsaved settings changes
 
-static void print_status(void) {
-    char msg[64];
-    for (uint8_t i = 0; i < OUT_COUNT; i++) {
-        const char *nm = g_settings.out_name[i];
-        const char *st = outputs_get(i) ? "on" : "off";
-        if (nm[0])
-            snprintf(msg, sizeof(msg), "out %u (%s) %s\r\n", (unsigned)(i + 1), nm, st);
-        else
-            snprintf(msg, sizeof(msg), "out %u %s\r\n", (unsigned)(i + 1), st);
-        console_print(msg);
-    }
-    char pc = g_settings.parity == 1 ? 'O' : g_settings.parity == 2 ? 'E' : 'N';
-    snprintf(msg, sizeof(msg), "bridge default %lu baud %u%c%u\r\n", (unsigned long)g_settings.baud,
-             g_settings.data_bits, pc, g_settings.stop_bits);
-    console_print(msg);
-    console_print("firmware DUTler " DUTLER_VERSION "\r\n");
-    if (g_boot_by_watchdog) console_print("note: last reset was a watchdog timeout\r\n");
-    if (dirty) console_print("(unsaved changes - use 'save')\r\n");
-}
+// ---------------------------------------------------------------------------
+//  Command table — the SINGLE source of truth for the control-port vocabulary.
+//  command_dispatch(), is_reserved_word() and the `help` listing all derive
+//  from this, so adding/renaming a command can't leave any of them out of step.
+// ---------------------------------------------------------------------------
+typedef void (*cmd_fn)(char **sp);  // sp = strtok_r state positioned after the verb
 
-static void print_help(void) {
-    console_print(
-        "DUTler control port\r\n"
-        "commands (newline-terminated):\r\n"
-        "  out <id> on|off|toggle      id = number 1.. or a name\r\n"
-        "  <id> on|off|toggle          shorthand: drop the 'out' keyword\r\n"
-        "  name <n> <alias|clear>      label output n\r\n"
-        "  set baud <n>                bridge boot baud rate\r\n"
-        "  set format <8N1>            bridge boot data/parity/stop\r\n"
-        "  save                        persist names + bridge defaults\r\n"
-        "  selftest                    GP0<->GP1 loopback continuity check\r\n"
-        "  factory-reset confirm       erase saved settings (back to defaults)\r\n"
-        "  status                      list outputs + bridge defaults\r\n"
-        "  version                     print firmware version\r\n"
-        "  bootsel                     reboot into USB bootloader\r\n"
-        "  help                        show this text\r\n");
+typedef struct {
+    const char *name;
+    cmd_fn fn;
+    const char *help;  // one line shown by `help`; NULL = hidden (e.g. aliases)
+} command_t;
+
+static void cmd_out(char **sp);
+static void cmd_name(char **sp);
+static void cmd_set(char **sp);
+static void cmd_save(char **sp);
+static void cmd_selftest(char **sp);
+static void cmd_factory_reset(char **sp);
+static void cmd_status(char **sp);
+static void cmd_version(char **sp);
+static void cmd_bootsel(char **sp);
+static void cmd_help(char **sp);
+
+// clang-format off
+static const command_t commands[] = {
+    {"out",           cmd_out,           "out <id> on|off|toggle  id=number or name"},
+    {"name",          cmd_name,          "name <n> <alias|clear>  label output n"},
+    {"set",           cmd_set,           "set baud <n> | set format <8N1>"},
+    {"save",          cmd_save,          "save  persist names + bridge defaults"},
+    {"selftest",      cmd_selftest,      "selftest  GP0<->GP1 loopback check"},
+    {"factory-reset", cmd_factory_reset, "factory-reset confirm  erase saved settings"},
+    {"status",        cmd_status,        "status  list outputs + bridge defaults"},
+    {"version",       cmd_version,       "version  print firmware version"},
+    {"bootsel",       cmd_bootsel,       "bootsel  reboot into USB bootloader"},
+    {"reset",         cmd_bootsel,       NULL},  // hidden alias for bootsel
+    {"help",          cmd_help,          "help  show this text"},
+};
+// clang-format on
+
+#define COMMAND_COUNT (sizeof(commands) / sizeof(commands[0]))
+
+// Command words that an output name must not shadow (they are matched first).
+// Derived from the table, so it can never drift from the dispatcher.
+static bool is_reserved_word(const char *w) {
+    for (size_t i = 0; i < COMMAND_COUNT; i++)
+        if (strcmp(w, commands[i].name) == 0) return true;
+    return false;
 }
 
 // Perform an action on an already-resolved output. The action token is pulled
@@ -100,18 +116,6 @@ static void cmd_out(char **sp) {
         return;
     }
     out_action(idx, sp);
-}
-
-// Command words that an output name must not shadow (they are matched first).
-// MUST list every top-level verb handled in command_dispatch() below — otherwise
-// a name alias can be created that the dispatcher then shadows (unusable alias).
-static bool is_reserved_word(const char *w) {
-    static const char *const reserved[] = {"out",      "name",          "set",     "save",
-                                           "status",   "help",          "bootsel", "reset",
-                                           "selftest", "factory-reset", "version"};
-    for (size_t i = 0; i < sizeof(reserved) / sizeof(reserved[0]); i++)
-        if (strcmp(w, reserved[i]) == 0) return true;
-    return false;
 }
 
 static void cmd_name(char **sp) {
@@ -159,8 +163,9 @@ static void cmd_set(char **sp) {
     }
     if (strcmp(what, "baud") == 0) {
         uint32_t b;
-        if (!parse_u32(val, &b) || b < 50 || b > 4000000) {
-            console_print("error: baud out of range (50..4000000)\r\n");
+        if (!parse_u32(val, &b) || b < BRIDGE_BAUD_MIN || b > BRIDGE_BAUD_MAX) {
+            console_print("error: baud out of range (" DUTLER_XSTR(
+                BRIDGE_BAUD_MIN) ".." DUTLER_XSTR(BRIDGE_BAUD_MAX) ")\r\n");
             return;
         }
         g_settings.baud = b;
@@ -203,7 +208,8 @@ static void cmd_set(char **sp) {
     }
 }
 
-static void cmd_save(void) {
+static void cmd_save(char **sp) {
+    (void)sp;
     if (settings_save()) {
         dirty = false;
         console_print("saved\r\n");
@@ -212,50 +218,88 @@ static void cmd_save(void) {
     }
 }
 
+static void cmd_status(char **sp) {
+    (void)sp;
+    char msg[64];
+    for (uint8_t i = 0; i < OUT_COUNT; i++) {
+        const char *nm = g_settings.out_name[i];
+        const char *st = outputs_get(i) ? "on" : "off";
+        if (nm[0])
+            snprintf(msg, sizeof(msg), "out %u (%s) %s\r\n", (unsigned)(i + 1), nm, st);
+        else
+            snprintf(msg, sizeof(msg), "out %u %s\r\n", (unsigned)(i + 1), st);
+        console_print(msg);
+    }
+    snprintf(msg, sizeof(msg), "bridge default " UART_MODE_FMT "\r\n",
+             (unsigned long)g_settings.baud, g_settings.data_bits,
+             parity_to_char(g_settings.parity), g_settings.stop_bits);
+    console_print(msg);
+    console_print("firmware DUTler " DUTLER_VERSION "\r\n");
+    if (g_boot_by_watchdog) console_print("note: last reset was a watchdog timeout\r\n");
+    if (dirty) console_print("(unsaved changes - use 'save')\r\n");
+}
+
+static void cmd_version(char **sp) {
+    (void)sp;
+    console_print("DUTler " DUTLER_VERSION "\r\n");
+}
+
+static void cmd_selftest(char **sp) {
+    (void)sp;
+    console_print(bridge_selftest() ? "selftest: GP0<->GP1 continuity OK\r\n"
+                                    : "selftest: GP0<->GP1 OPEN (check the loopback jumper)\r\n");
+}
+
+static void cmd_factory_reset(char **sp) {
+    char *a = strtok_r(NULL, " \t", sp);
+    if (!a || strcmp(a, "confirm") != 0) {
+        console_print("error: 'factory-reset confirm' erases all saved settings\r\n");
+        return;
+    }
+    settings_reset();
+    dirty = false;
+    console_print("factory reset done (bridge UART defaults apply after reboot)\r\n");
+}
+
+static void cmd_bootsel(char **sp) {
+    (void)sp;
+    console_print("rebooting to BOOTSEL\r\n");
+    absolute_time_t deadline = make_timeout_time_ms(50);
+    while (!time_reached(deadline)) tud_task();
+    reset_usb_boot(0, 0);  // does not return
+}
+
+static void cmd_help(char **sp) {
+    (void)sp;
+    // Built from the table so it lists exactly the commands that exist. Kept
+    // within one CDC TX FIFO (512 B) so the whole listing flushes in one go.
+    console_print("DUTler control port\r\ncommands:\r\n");
+    for (size_t i = 0; i < COMMAND_COUNT; i++) {
+        if (!commands[i].help) continue;  // hidden alias
+        console_print("  ");
+        console_print(commands[i].help);
+        console_print("\r\n");
+    }
+    console_print("  <id> on|off|toggle      shorthand: drop the 'out' keyword\r\n");
+}
+
 void command_dispatch(char *s) {
     char *sp = NULL;
     char *tok = strtok_r(s, " \t", &sp);
     if (!tok) return;
 
-    if (strcmp(tok, "help") == 0) {
-        print_help();
-    } else if (strcmp(tok, "status") == 0) {
-        print_status();
-    } else if (strcmp(tok, "out") == 0) {
-        cmd_out(&sp);
-    } else if (strcmp(tok, "name") == 0) {
-        cmd_name(&sp);
-    } else if (strcmp(tok, "set") == 0) {
-        cmd_set(&sp);
-    } else if (strcmp(tok, "save") == 0) {
-        cmd_save();
-    } else if (strcmp(tok, "version") == 0) {
-        console_print("DUTler " DUTLER_VERSION "\r\n");
-    } else if (strcmp(tok, "selftest") == 0) {
-        console_print(bridge_selftest()
-                          ? "selftest: GP0<->GP1 continuity OK\r\n"
-                          : "selftest: GP0<->GP1 OPEN (check the loopback jumper)\r\n");
-    } else if (strcmp(tok, "factory-reset") == 0) {
-        char *a = strtok_r(NULL, " \t", &sp);
-        if (!a || strcmp(a, "confirm") != 0) {
-            console_print("error: 'factory-reset confirm' erases all saved settings\r\n");
-        } else {
-            settings_reset();
-            dirty = false;
-            console_print("factory reset done (bridge UART defaults apply after reboot)\r\n");
+    for (size_t i = 0; i < COMMAND_COUNT; i++) {
+        if (strcmp(tok, commands[i].name) == 0) {
+            commands[i].fn(&sp);
+            return;
         }
-    } else if (strcmp(tok, "bootsel") == 0 || strcmp(tok, "reset") == 0) {
-        console_print("rebooting to BOOTSEL\r\n");
-        absolute_time_t deadline = make_timeout_time_ms(50);
-        while (!time_reached(deadline)) tud_task();
-        reset_usb_boot(0, 0);  // does not return
-    } else {
-        // Shorthand: an output number or configured name used as a verb,
-        // e.g. "pump on" == "out pump on".
-        int idx = outputs_resolve(tok);
-        if (idx >= 0)
-            out_action(idx, &sp);
-        else
-            console_print("error: unknown command (try 'help')\r\n");
     }
+
+    // Shorthand: an output number or configured name used as a verb,
+    // e.g. "pump on" == "out pump on".
+    int idx = outputs_resolve(tok);
+    if (idx >= 0)
+        out_action(idx, &sp);
+    else
+        console_print("error: unknown command (try 'help')\r\n");
 }
