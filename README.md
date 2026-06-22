@@ -197,20 +197,15 @@ CI runs these on every push and pull request.
 
 ## Control commands
 
-```
-out <id> on|off|toggle      id = output number (1..) or a configured name
-<id> on|off|toggle          shorthand: e.g. 'pump on' == 'out pump on'
-name <n> <alias|clear>      label output n (then usable as <id> above)
-set baud <n>                bridge boot baud rate
-set format <8N1>            bridge boot data/parity/stop (e.g. 8N1, 7E1)
-save                        persist names + bridge defaults to flash
-selftest                    GP0<->GP1 loopback continuity check (non-destructive)
-factory-reset confirm       erase saved settings (back to defaults)
-status                      list outputs + bridge defaults
-version                     print firmware version
-bootsel                     reboot into USB bootloader
-help                        show command help
-```
+Open the **Control** port (CDC1) and type `help` — the firmware prints the authoritative,
+always-current command list, so this README doesn't try to mirror it. In brief:
+
+- **`out <id> on|off|toggle`** drives an output by number (`1..`) or configured name, with an
+  `<id> on|off|toggle` shorthand (e.g. `pump on`); **`name <n> <alias|clear>`** labels one.
+- **`set baud <n>`** / **`set format <8N1>`** set the bridge UART defaults; **`save`** persists
+  names + bridge defaults to flash; **`status`** shows current state (and unsaved changes).
+- **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**, **`version`**, and
+  **`bootsel`** (reboot into the USB bootloader) round it out.
 
 ## Persistent settings
 
