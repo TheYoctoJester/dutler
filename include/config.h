@@ -43,7 +43,16 @@
 #define OUT_ACTIVE_LOW 0
 
 // ---- Activity LED ---------------------------------------------------
-#define LED_PIN PICO_DEFAULT_LED_PIN  // GP25 on a stock Pico
+// Heartbeat LED, when the board exposes one on a plain GPIO (GP25 on a stock
+// Pico). Wireless boards (Pico W / Pico 2 W) drive their LED via the CYW43 chip
+// and define no PICO_DEFAULT_LED_PIN — there the heartbeat is simply skipped
+// (DUTLER_HAVE_LED 0), avoiding a wireless-stack dependency.
+#if defined(PICO_DEFAULT_LED_PIN)
+#define DUTLER_HAVE_LED 1
+#define LED_PIN PICO_DEFAULT_LED_PIN
+#else
+#define DUTLER_HAVE_LED 0
+#endif
 
 // ---- Reset behaviour ------------------------------------------------
 // Opening the DEBUG port at 1200 baud reboots into the USB bootloader (the

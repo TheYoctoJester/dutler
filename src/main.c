@@ -32,8 +32,10 @@ int main(void) {
     bridge_init();
     outputs_init();
 
+#if DUTLER_HAVE_LED
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
+#endif
 
     // Recover automatically if the main loop ever wedges (e.g. USB stack hang).
     watchdog_enable(WATCHDOG_TIMEOUT_MS, true /*pause while debugging*/);
@@ -41,8 +43,12 @@ int main(void) {
     dbg_printf("DUTler %s — boot: %s\r\n", DUTLER_VERSION,
                g_boot_by_watchdog ? "WATCHDOG RESET" : "normal");
 
+    // The blink deadline also bounds the loop's sleep (keeps the watchdog fed),
+    // so it runs on every board even where there is no LED to toggle.
     absolute_time_t next_blink = make_timeout_time_ms(500);
+#if DUTLER_HAVE_LED
     bool led_on = false;
+#endif
 
     while (true) {
         watchdog_update();  // "I'm still alive"
@@ -53,8 +59,10 @@ int main(void) {
 
         // Heartbeat so it's visibly alive even with no traffic.
         if (time_reached(next_blink)) {
+#if DUTLER_HAVE_LED
             led_on = !led_on;
             gpio_put(LED_PIN, led_on);
+#endif
             next_blink = make_timeout_time_ms(500);
         }
 

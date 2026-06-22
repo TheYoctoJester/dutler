@@ -1,3 +1,5 @@
-build/
-build-tests/
+# Build trees (build/, build-tests/, board-specific build-p2/, …)
+build*/
+# Editor/tooling caches
+.cache/
 .DS_Store

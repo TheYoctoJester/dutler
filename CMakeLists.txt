@@ -54,7 +54,7 @@ add_executable(dutler
     src/command.c
     src/settings.c
     src/settings_codec.c
-    src/flash_port_rp2040.c
+    src/flash_port_pico.c
     src/util/crc32.c
     src/util/numparse.c
     src/util/debug.c
@@ -73,7 +73,7 @@ target_include_directories(dutler PRIVATE
 option(DUTLER_WERROR "Treat compiler warnings as errors on DUTler's own sources" OFF)
 set(DUTLER_OWN_SOURCES
     src/main.c src/usb_descriptors.c src/bridge.c src/outputs.c src/console.c
-    src/command.c src/settings.c src/settings_codec.c src/flash_port_rp2040.c
+    src/command.c src/settings.c src/settings_codec.c src/flash_port_pico.c
     src/util/crc32.c src/util/numparse.c src/util/debug.c)
 set(DUTLER_WARNINGS -Wall -Wextra -Wshadow -Wdouble-promotion -Wconversion)
 if(DUTLER_WERROR)
