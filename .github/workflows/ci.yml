@@ -104,9 +104,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # pico = RP2040, pico2_w = RP2350. Both share one codebase; the build
-        # adapts flash size at runtime and skips the LED on wireless boards.
-        board: [pico, pico2_w]
+        # One codebase across the Pico family; the build adapts flash size at
+        # runtime and skips the LED on wireless boards (no PICO_DEFAULT_LED_PIN).
+        # Cover both axes: {RP2040, RP2350} x {wired LED, wireless no-LED}.
+        #   pico     RP2040, LED        pico_w   RP2040, no LED
+        #   pico2    RP2350, LED        pico2_w  RP2350, no LED
+        board: [pico, pico_w, pico2, pico2_w]
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

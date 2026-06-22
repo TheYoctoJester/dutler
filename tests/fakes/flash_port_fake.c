@@ -4,22 +4,36 @@
 // RAM-backed implementation of flash_port.h for host tests. Lets settings.c
 // exercise its A/B slot logic, CRC fallback, migration and power-loss handling
 // with no hardware.
+#include <assert.h>
 #include <string.h>
 
 #include "fakes.h"
 #include "flash_port.h"
 
-// Fixed host-side region (mirrors a 2 MB Pico; the value only has to be
-// self-consistent for the tests, which derive slot offsets from flash_port_size()).
-#define FAKE_FLASH_SIZE (2u * 1024u * 1024u)
+// Host-side flash region. The backing store is sized for the largest board we
+// build for (Pico 2, 4 MB); the *reported* size is runtime-settable so tests can
+// exercise the board-dependent slot arithmetic at more than one geometry (a fixed
+// size would only ever test the offsets at that single value). Defaults to a 2 MB
+// Pico after each reset.
+#define FAKE_FLASH_MAX (4u * 1024u * 1024u)
+#define FAKE_FLASH_DEFAULT (2u * 1024u * 1024u)
 
-static uint8_t flash[FAKE_FLASH_SIZE];
+static uint8_t flash[FAKE_FLASH_MAX];
+static uint32_t flash_size = FAKE_FLASH_DEFAULT;
 static bool fail_next_program;
 
-uint32_t flash_port_size(void) { return FAKE_FLASH_SIZE; }
+uint32_t flash_port_size(void) { return flash_size; }
+
+void flash_fake_set_size(uint32_t bytes) {
+    // Must fit the backing store and be sector-aligned (real boards always are;
+    // settings.c derives sector-aligned slot offsets and would otherwise misalign).
+    assert(bytes <= FAKE_FLASH_MAX && bytes % FLASH_PORT_SECTOR_SIZE == 0);
+    flash_size = bytes;
+}
 
 void flash_fake_reset(void) {
     memset(flash, 0xFF, sizeof(flash));
+    flash_size = FAKE_FLASH_DEFAULT;  // isolate tests that change the size
     fail_next_program = false;
 }
 

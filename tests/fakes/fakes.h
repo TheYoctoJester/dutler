@@ -11,7 +11,8 @@
 #include <stdint.h>
 
 // --- flash_port_fake.c (RAM-backed flash) ---
-void flash_fake_reset(void);                                          // all 0xFF, clears fail flag
+void flash_fake_reset(void);               // all 0xFF, size back to 2 MB, clears fail flag
+void flash_fake_set_size(uint32_t bytes);  // report a board flash size (<= 4 MB, sector-aligned)
 void flash_fake_poke(uint32_t off, const uint8_t *data, uint32_t n);  // plant/corrupt bytes
 void flash_fake_fail_next_program(void);  // next write erases but skips the program (power loss)
 

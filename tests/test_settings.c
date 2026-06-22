@@ -138,6 +138,43 @@ static void test_v1_migration(void) {
     TEST_ASSERT_EQUAL_STRING("alpha", v2.out_name[1]);
 }
 
+// The point of the runtime flash_port_size(): on a larger board (Pico 2, 4 MB)
+// the A/B slots must move to the last two sectors of *that* flash, not stay at the
+// 2 MB layout. Exercises the offset arithmetic end-to-end at 4 MB and guards
+// against any regression to a hardcoded 2 MB offset.
+static void test_slots_track_4mb_flash(void) {
+    flash_fake_set_size(4u * 1024u * 1024u);
+
+    // Offsets follow the new size, not the 2 MB default.
+    TEST_ASSERT_EQUAL_UINT32(4u * 1024u * 1024u - 2u * FLASH_PORT_SECTOR_SIZE, slot_a());
+    TEST_ASSERT_EQUAL_UINT32(4u * 1024u * 1024u - 1u * FLASH_PORT_SECTOR_SIZE, slot_b());
+
+    settings_load();  // blank region -> defaults
+    g_settings.baud = 460800;
+    TEST_ASSERT_TRUE(settings_save());  // -> slot A, seq 1
+    g_settings.baud = 921600;
+    TEST_ASSERT_TRUE(settings_save());  // -> slot B, seq 2 (freshest)
+
+    // The freshest record really landed in the 4 MB slot B.
+    settings_t s;
+    uint32_t seq;
+    TEST_ASSERT_TRUE(settings_codec_decode(flash_port_read(slot_b()), &s, &seq));
+    TEST_ASSERT_EQUAL_UINT32(2, seq);
+    TEST_ASSERT_EQUAL_UINT32(921600, s.baud);
+
+    // Nothing was written at the old 2 MB offset (which is mid-flash on a 4 MB
+    // board) — that address must still read as erased. This is the assertion that
+    // fails if the offsets ever regress to a hardcoded 2 MB.
+    const uint8_t *stale = flash_port_read(2u * 1024u * 1024u - 1u * FLASH_PORT_SECTOR_SIZE);
+    settings_t junk;
+    uint32_t junk_seq;
+    TEST_ASSERT_FALSE(settings_codec_decode(stale, &junk, &junk_seq));
+
+    memset(&g_settings, 0, sizeof(g_settings));
+    settings_load();
+    TEST_ASSERT_EQUAL_UINT32(921600, g_settings.baud);  // newest wins at 4 MB
+}
+
 static void test_factory_reset(void) {
     settings_load();
     g_settings.baud = 9600;
@@ -161,6 +198,7 @@ int main(void) {
     RUN_TEST(test_crc_fallback);
     RUN_TEST(test_power_loss_safe);
     RUN_TEST(test_v1_migration);
+    RUN_TEST(test_slots_track_4mb_flash);
     RUN_TEST(test_factory_reset);
     return UNITY_END();
 }
