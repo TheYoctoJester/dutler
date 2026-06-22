@@ -253,46 +253,6 @@ and `status` reports it. Outputs always come up OFF after any reset.
   flow control": it's a choice. If a future use case genuinely needs it, wire RTS/CTS pins and
   call `uart_set_hw_flow()` in `bridge.c` — but that's a new feature, not a fix.
 
-## Layout
-
-```
-DUTler/
-├── LICENSE                # GPL-3.0 text (the open-source half of the dual license)
-├── COMMERCIAL.md          # the commercial-license option from Northern.tech AS
-├── CONTRIBUTING.md        # how to contribute (DCO + CLA, build/style/PR)
-├── CLA.md                 # contributor license agreement (enables dual-licensing)
-├── THIRD_PARTY.md         # third-party components + their licenses
-├── env.sh                 # self-contained build environment (source before building)
-├── flash.sh               # build + picotool load
-├── CMakeLists.txt
-├── pico_sdk_import.cmake
-├── include/config.h       # pins, output count/polarity, UART, USB IDs — main knobs
-├── src/                   # layered by dependency (see CONTRIBUTING for the rule)
-│   ├── main.c             # composition root: init + super-loop (tud_task / bridge / console)
-│   ├── core/             # portable application logic — the real code the host tests run
-│   │   ├── command.c/.h   # control-port command interpreter (parse + dispatch)
-│   │   ├── outputs.c/.h   # output line model (power relay + strap/reset MOSFETs)
-│   │   ├── settings.c/.h  # power-loss-safe A/B settings: slot logic (unit-tested)
-│   │   └── settings_codec.c/.h # pure record (de)serialization — unit-tested
-│   ├── platform/         # board/SDK + TinyUSB — each has a host fake in tests/fakes/
-│   │   ├── flash_port.h   # flash hardware seam (impl below; RAM fake in tests/)
-│   │   ├── flash_port_pico.c # SDK flash I/O + critical section (RP2040/RP2350)
-│   │   ├── bridge.c/.h    # CDC0 <-> uart0, IRQ RX ring buffer, line-coding sync
-│   │   ├── console.c/.h   # CDC1 line transport (read/assemble lines, write replies)
-│   │   ├── usb_descriptors.c # composite triple-CDC descriptors + chip-ID serial
-│   │   ├── tusb_config.h  # TinyUSB: 3× CDC, full-speed device
-│   │   └── debug.c/.h     # dbg_printf() -> CDC2 debug-log port
-│   └── util/             # pure, product-agnostic helpers
-│       ├── crc32.c/.h     # pure CRC-32 — unit-tested
-│       └── numparse.c/.h  # pure integer parsing (parse_u32) — unit-tested
-├── tests/                 # host unit tests (Unity): test_{pure,settings,command}
-│   ├── fakes/             # RAM flash + console/bridge/debug/SDK test doubles
-│   ├── shims/             # minimal pico/*, tusb.h headers for host compilation
-│   └── vendor/unity/      # vendored Unity framework (MIT)
-├── tools/                 # host-side test/util scripts (loopback, out, reset, debug)
-└── hardware/              # (future) open-hardware carrier board — see hardware/README.md
-```
-
 ## Debug log
 
 Firmware logs go to the **Debug Log** port (CDC2). Watch them with:
