@@ -11,6 +11,7 @@ missing=0
 while IFS= read -r f; do
     case "$f" in
         pico_sdk_import.cmake) continue ;;  # vendored; keeps its upstream BSD header
+        tests/vendor/*) continue ;;         # vendored Unity; keeps its upstream MIT header
     esac
     if ! grep -q "SPDX-License-Identifier" "$f"; then
         echo "missing SPDX header: $f"

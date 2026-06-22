@@ -6,10 +6,7 @@
 #include <string.h>
 
 #include "config.h"
-#include "hardware/flash.h"
-#include "hardware/sync.h"
-#include "hardware/watchdog.h"
-#include "pico/stdlib.h"
+#include "flash_port.h"
 #include "settings_codec.h"
 
 settings_t g_settings;
@@ -36,12 +33,13 @@ settings_t g_settings;
 
 // Two alternating slots: the last two sectors of flash. The v1 record lived in
 // the very last sector, which is slot B here, so legacy data is found in place.
-#define SLOT_A_OFFSET (PICO_FLASH_SIZE_BYTES - 2u * FLASH_SECTOR_SIZE)
-#define SLOT_B_OFFSET (PICO_FLASH_SIZE_BYTES - 1u * FLASH_SECTOR_SIZE)
+#define SLOT_A_OFFSET (FLASH_PORT_TOTAL_SIZE - 2u * FLASH_PORT_SECTOR_SIZE)
+#define SLOT_B_OFFSET (FLASH_PORT_TOTAL_SIZE - 1u * FLASH_PORT_SECTOR_SIZE)
 #define LEGACY_OFFSET SLOT_B_OFFSET
 
 // A record must fit in one programmable flash page.
-_Static_assert(SETTINGS_RECORD_LEN <= FLASH_PAGE_SIZE, "settings record exceeds one flash page");
+_Static_assert(SETTINGS_RECORD_LEN <= FLASH_PORT_PAGE_SIZE,
+               "settings record exceeds one flash page");
 
 // 0 = slot A, 1 = slot B. Tracks which slot holds the freshest record so save()
 // writes the other one. g_seq is that record's sequence number.
@@ -65,8 +63,8 @@ static void load_defaults(void) {
 }
 
 void settings_load(void) {
-    const uint8_t *a = (const uint8_t *)(XIP_BASE + SLOT_A_OFFSET);
-    const uint8_t *b = (const uint8_t *)(XIP_BASE + SLOT_B_OFFSET);
+    const uint8_t *a = flash_port_read(SLOT_A_OFFSET);
+    const uint8_t *b = flash_port_read(SLOT_B_OFFSET);
 
     settings_t cand;
     uint32_t seq, best = 0;
@@ -94,7 +92,7 @@ void settings_load(void) {
     }
 
     // No valid v2 record: upgrade a legacy v1 record in place if present.
-    if (settings_codec_decode_v1((const uint8_t *)(XIP_BASE + LEGACY_OFFSET), &cand)) {
+    if (settings_codec_decode_v1(flash_port_read(LEGACY_OFFSET), &cand)) {
         g_settings = cand;
         terminate_names();
         g_seq = 0;
@@ -113,23 +111,18 @@ bool settings_save(void) {
     uint32_t off = target ? SLOT_B_OFFSET : SLOT_A_OFFSET;
     uint32_t seq = g_seq + 1u;
 
-    uint8_t page[FLASH_PAGE_SIZE];
+    uint8_t page[FLASH_PORT_PAGE_SIZE];
     memset(page, 0xFF, sizeof(page));
     settings_codec_encode(page, &g_settings, seq);
 
-    // Full watchdog budget for the interrupts-masked erase/program.
-    watchdog_update();
-    uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(off, FLASH_SECTOR_SIZE);
-    flash_range_program(off, page, FLASH_PAGE_SIZE);
-    restore_interrupts(ints);
+    flash_port_write_sector(off, page);
 
     // Verify the freshly written slot before it counts. On failure the other
     // (still-intact) slot stays freshest, so no config is lost. Reads into a
     // scratch buffer — g_settings is never disturbed.
     settings_t chk;
     uint32_t chk_seq;
-    if (!settings_codec_decode((const uint8_t *)(XIP_BASE + off), &chk, &chk_seq) || chk_seq != seq)
+    if (!settings_codec_decode(flash_port_read(off), &chk, &chk_seq) || chk_seq != seq)
         return false;
 
     g_seq = seq;
@@ -139,11 +132,8 @@ bool settings_save(void) {
 
 void settings_reset(void) {
     // Erase both slots so the next boot finds no record and uses defaults.
-    watchdog_update();
-    uint32_t ints = save_and_disable_interrupts();
-    flash_range_erase(SLOT_A_OFFSET, FLASH_SECTOR_SIZE);
-    flash_range_erase(SLOT_B_OFFSET, FLASH_SECTOR_SIZE);
-    restore_interrupts(ints);
+    flash_port_erase_sector(SLOT_A_OFFSET);
+    flash_port_erase_sector(SLOT_B_OFFSET);
     load_defaults();
     g_seq = 0;
     active_slot = 1;  // next save targets slot A

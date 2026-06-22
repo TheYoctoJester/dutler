@@ -67,7 +67,15 @@ cppcheck --enable=warning,performance,portability --inline-suppr \
 ```
 
 `-DDUTLER_WERROR` / `-DDUTLER_SANITIZE` default **off**, so a plain local build stays lenient —
-CI turns them on. New pure logic should come with a test in `tests/test_main.c`.
+CI turns them on.
+
+The host suite uses **[Unity](https://www.throwtheswitch.org/unity)** (vendored under
+`tests/vendor/`) and is split into runners: `test_pure.c` (CRC/parsing/codec), `test_settings.c`
+(the A/B flash store, via the RAM fake in `tests/fakes/`), and `test_command.c` (the command
+interpreter, via the fakes + minimal SDK shims in `tests/shims/`). Hardware is abstracted behind
+`src/flash_port.h` (real impl `flash_port_rp2040.c`; the tests link `tests/fakes/flash_port_fake.c`).
+New logic should come with a test in the matching runner — or a new one wired up in
+`tests/CMakeLists.txt`.
 
 ## Commits & pull requests
 

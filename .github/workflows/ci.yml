@@ -30,9 +30,10 @@ jobs:
           python-version: "3.x"
       # Pinned so CI matches the formatting in the repo (versions differ in output).
       - run: pip install "clang-format==22.1.5"
-      # git ls-files patterns recurse into subdirs (e.g. src/util/), so new
-      # auxiliary modules are covered automatically (mirrors check_spdx.sh).
-      - run: clang-format --dry-run -Werror $(git ls-files 'src/*.c' 'src/*.h' 'include/*.h' 'tests/*.c')
+      # git ls-files patterns recurse into subdirs (src/util/, tests/fakes/, …),
+      # so new modules are covered automatically (mirrors check_spdx.sh). Vendored
+      # Unity keeps its own formatting, so it is excluded.
+      - run: clang-format --dry-run -Werror $(git ls-files 'src/*.c' 'src/*.h' 'include/*.h' 'tests/*.c' 'tests/*.h' ':(exclude)tests/vendor/*')
 
   spdx:
     name: SPDX headers
