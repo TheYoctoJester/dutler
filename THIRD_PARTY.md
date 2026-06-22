@@ -22,6 +22,7 @@ Pico SDK / Arm GNU toolchain you install per the README *Requirements*).
 | **CMake**, **Ninja** | BSD-3-Clause / Apache-2.0 | Build system. |
 | **picotool** | BSD-3-Clause | UF2 generation and flashing. |
 | **Python 3** (optional) | PSF License | Runs the host helper scripts in `tools/`. |
+| **Unity** (ThrowTheSwitch) | MIT | C unit-test framework for the host tests. Vendored at `tests/vendor/unity/` (keeps its own MIT header). |
 
 ## Notes
 
@@ -29,6 +30,9 @@ Pico SDK / Arm GNU toolchain you install per the README *Requirements*).
   distributing the resulting firmware is fine.
 - `pico_sdk_import.cmake` in this repo is copied verbatim from the Pico SDK and retains its own
   Raspberry Pi BSD-3-Clause header (so it carries no DUTler SPDX header).
+- The vendored **Unity** sources under `tests/vendor/unity/` are host-test-only (never linked into
+  the firmware image) and keep their upstream MIT headers; the SPDX and clang-format checks skip
+  that directory.
 
 SPDX identifiers used in this repo: `Apache-2.0`
 (firmware), and — once hardware lands — `CERN-OHL-P-2.0` (board) and `CC-BY-4.0` (docs).

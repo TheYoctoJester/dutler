@@ -268,13 +268,18 @@ DUTler/
 │   ├── outputs.c/.h       # GPIO output layer (power relay + strap/reset MOSFETs)
 │   ├── console.c/.h       # CDC1 line transport (read/assemble lines, write replies)
 │   ├── command.c/.h       # control-port command interpreter (parse + dispatch)
-│   ├── settings.c/.h      # power-loss-safe A/B flash settings (flash I/O + slots)
+│   ├── settings.c/.h      # power-loss-safe A/B settings: slot logic (unit-tested)
 │   ├── settings_codec.c/.h # pure record (de)serialization — unit-tested
+│   ├── flash_port.h       # flash hardware seam (impl below; RAM fake in tests/)
+│   ├── flash_port_rp2040.c # SDK flash I/O + critical section behind flash_port.h
 │   └── util/              # auxiliary helpers (not product logic)
 │       ├── crc32.c/.h     # pure CRC-32 — unit-tested
 │       ├── numparse.c/.h  # pure integer parsing (parse_u32) — unit-tested
 │       └── debug.c/.h     # dbg_printf() -> CDC2 debug-log port
-├── tests/                 # host unit tests (native build, no SDK) + CMakeLists
+├── tests/                 # host unit tests (Unity): test_{pure,settings,command}
+│   ├── fakes/             # RAM flash + console/bridge/debug/SDK test doubles
+│   ├── shims/             # minimal pico/*, tusb.h headers for host compilation
+│   └── vendor/unity/      # vendored Unity framework (MIT)
 ├── tools/                 # host-side test/util scripts (loopback, out, reset, debug)
 └── hardware/              # (future) open-hardware carrier board — see hardware/README.md
 ```
