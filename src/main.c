@@ -45,7 +45,7 @@ int main(void) {
 
     // The blink deadline also bounds the loop's sleep (keeps the watchdog fed),
     // so it runs on every board even where there is no LED to toggle.
-    absolute_time_t next_blink = make_timeout_time_ms(500);
+    absolute_time_t next_blink = make_timeout_time_ms(HEARTBEAT_MS);
 #if DUTLER_HAVE_LED
     bool led_on = false;
 #endif
@@ -63,14 +63,14 @@ int main(void) {
             led_on = !led_on;
             gpio_put(LED_PIN, led_on);
 #endif
-            next_blink = make_timeout_time_ms(500);
+            next_blink = make_timeout_time_ms(HEARTBEAT_MS);
         }
 
         // Sleep the core until something happens (USB or UART RX IRQ) or the
         // heartbeat is due, instead of spinning flat out. The watchdog is fed
         // from this loop on purpose (so a wedged loop is caught); the heartbeat
-        // deadline guarantees the loop turns over within ~500 ms — well inside
-        // the 2 s watchdog — via the default alarm pool (asserted present above).
+        // deadline guarantees the loop turns over within HEARTBEAT_MS — well inside
+        // WATCHDOG_TIMEOUT_MS — via the default alarm pool (asserted present above).
         best_effort_wfe_or_timeout(next_blink);
     }
 }

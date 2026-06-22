@@ -39,4 +39,11 @@ bool settings_save(void);
 // Erase the stored record and reset g_settings to defaults (factory reset).
 void settings_reset(void);
 
+// Human-readable UART line mode. Shared so the control port's `status` and the
+// bridge's line-coding log render it identically.
+//   printf args: (unsigned long)baud, (unsigned)data_bits, parity_char, (unsigned)stop_bits
+#define UART_MODE_FMT "%lu baud %u%c%u"
+// Map a parity code (0 = none, 1 = odd, 2 = even) to its 'N'/'O'/'E' letter.
+char parity_to_char(uint8_t parity_code);
+
 #endif  // SETTINGS_H
