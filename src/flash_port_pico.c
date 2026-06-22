@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
+// SDK-backed flash port for the whole Pico family (RP2040 + RP2350). The flash
+// API and 4 KB/256 B geometry are identical across both; only the total size
+// differs, reported at runtime by flash_port_size().
 #include "flash_port.h"
 #include "hardware/flash.h"
 #include "hardware/sync.h"
@@ -10,7 +13,8 @@
 // Keep the build-time geometry honest against the SDK's notion of this chip.
 _Static_assert(FLASH_PORT_SECTOR_SIZE == FLASH_SECTOR_SIZE, "sector size mismatch vs SDK");
 _Static_assert(FLASH_PORT_PAGE_SIZE == FLASH_PAGE_SIZE, "page size mismatch vs SDK");
-_Static_assert(FLASH_PORT_TOTAL_SIZE == PICO_FLASH_SIZE_BYTES, "flash size mismatch vs SDK");
+
+uint32_t flash_port_size(void) { return PICO_FLASH_SIZE_BYTES; }
 
 const uint8_t *flash_port_read(uint32_t off) { return (const uint8_t *)(XIP_BASE + off); }
 

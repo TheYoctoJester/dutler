@@ -99,8 +99,14 @@ jobs:
           ctest --test-dir build-tests --output-on-failure
 
   build:
-    name: Build firmware (RP2040)
+    name: Build firmware (${{ matrix.board }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # pico = RP2040, pico2_w = RP2350. Both share one codebase; the build
+        # adapts flash size at runtime and skips the LED on wireless boards.
+        board: [pico, pico2_w]
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -127,7 +133,7 @@ jobs:
         # Toolchain is on PATH (so no PICO_TOOLCHAIN_PATH needed); the SDK builds
         # picotool itself. env.sh isn't sourced — CI pins everything explicitly.
         # -Werror is CI-only (local dev builds stay lenient).
-        run: cmake -S . -B build -G Ninja -DPICO_SDK_PATH="$PICO_SDK_PATH" -DDUTLER_WERROR=ON
+        run: cmake -S . -B build -G Ninja -DPICO_SDK_PATH="$PICO_SDK_PATH" -DPICO_BOARD=${{ matrix.board }} -DDUTLER_WERROR=ON
 
       - name: Build
         run: cmake --build build
@@ -139,7 +145,7 @@ jobs:
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: dutler-firmware
+          name: dutler-${{ matrix.board }}
           path: |
             build/dutler.uf2
             build/dutler.elf

@@ -15,9 +15,10 @@
 #include "unity.h"
 #include "util/crc32.h"
 
-#define SLOT_A (FLASH_PORT_TOTAL_SIZE - 2u * FLASH_PORT_SECTOR_SIZE)
-#define SLOT_B (FLASH_PORT_TOTAL_SIZE - 1u * FLASH_PORT_SECTOR_SIZE)
-#define LEGACY SLOT_B  // a v1 record lived in the very last sector
+// Slot offsets derived from the (fake) flash size, exactly as settings.c does.
+static uint32_t slot_a(void) { return flash_port_size() - 2u * FLASH_PORT_SECTOR_SIZE; }
+static uint32_t slot_b(void) { return flash_port_size() - 1u * FLASH_PORT_SECTOR_SIZE; }
+#define LEGACY (slot_b())  // a v1 record lived in the very last sector
 
 void setUp(void) { flash_fake_reset(); }
 void tearDown(void) {}
@@ -69,8 +70,8 @@ static void test_ab_ping_pong(void) {
 
     settings_t a, b;
     uint32_t seq_a, seq_b;
-    TEST_ASSERT_TRUE(settings_codec_decode(flash_port_read(SLOT_A), &a, &seq_a));
-    TEST_ASSERT_TRUE(settings_codec_decode(flash_port_read(SLOT_B), &b, &seq_b));
+    TEST_ASSERT_TRUE(settings_codec_decode(flash_port_read(slot_a()), &a, &seq_a));
+    TEST_ASSERT_TRUE(settings_codec_decode(flash_port_read(slot_b()), &b, &seq_b));
     // Distinct slots, distinct sequence numbers (1 and 2 in some order).
     TEST_ASSERT_TRUE(seq_a != seq_b);
     TEST_ASSERT_EQUAL_UINT32(3, seq_a + seq_b);
@@ -91,7 +92,7 @@ static void test_crc_fallback(void) {
     TEST_ASSERT_TRUE(settings_save());  // -> slot B, seq 2 (freshest)
 
     uint8_t junk = 0x00;  // clobber a payload byte in the freshest slot (B)
-    flash_fake_poke(SLOT_B + SC_OFF_PAYLOAD_V2, &junk, 1);
+    flash_fake_poke(slot_b() + SC_OFF_PAYLOAD_V2, &junk, 1);
 
     memset(&g_settings, 0, sizeof(g_settings));
     settings_load();
@@ -132,7 +133,7 @@ static void test_v1_migration(void) {
     // It was re-saved as a valid v2 record (in slot A).
     settings_t v2;
     uint32_t seq;
-    TEST_ASSERT_TRUE(settings_codec_decode(flash_port_read(SLOT_A), &v2, &seq));
+    TEST_ASSERT_TRUE(settings_codec_decode(flash_port_read(slot_a()), &v2, &seq));
     TEST_ASSERT_EQUAL_UINT32(57600, v2.baud);
     TEST_ASSERT_EQUAL_STRING("alpha", v2.out_name[1]);
 }

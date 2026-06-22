@@ -33,9 +33,11 @@ settings_t g_settings;
 
 // Two alternating slots: the last two sectors of flash. The v1 record lived in
 // the very last sector, which is slot B here, so legacy data is found in place.
-#define SLOT_A_OFFSET (FLASH_PORT_TOTAL_SIZE - 2u * FLASH_PORT_SECTOR_SIZE)
-#define SLOT_B_OFFSET (FLASH_PORT_TOTAL_SIZE - 1u * FLASH_PORT_SECTOR_SIZE)
-#define LEGACY_OFFSET SLOT_B_OFFSET
+// Offsets are derived at runtime from the board's flash size (2 MB on a Pico,
+// 4 MB on a Pico 2).
+static uint32_t slot_a_offset(void) { return flash_port_size() - 2u * FLASH_PORT_SECTOR_SIZE; }
+static uint32_t slot_b_offset(void) { return flash_port_size() - 1u * FLASH_PORT_SECTOR_SIZE; }
+#define LEGACY_OFFSET (slot_b_offset())
 
 // A record must fit in one programmable flash page.
 _Static_assert(SETTINGS_RECORD_LEN <= FLASH_PORT_PAGE_SIZE,
@@ -63,8 +65,8 @@ static void load_defaults(void) {
 }
 
 void settings_load(void) {
-    const uint8_t *a = flash_port_read(SLOT_A_OFFSET);
-    const uint8_t *b = flash_port_read(SLOT_B_OFFSET);
+    const uint8_t *a = flash_port_read(slot_a_offset());
+    const uint8_t *b = flash_port_read(slot_b_offset());
 
     settings_t cand;
     uint32_t seq, best = 0;
@@ -108,7 +110,7 @@ void settings_load(void) {
 
 bool settings_save(void) {
     uint8_t target = active_slot ^ 1u;  // write the *inactive* slot
-    uint32_t off = target ? SLOT_B_OFFSET : SLOT_A_OFFSET;
+    uint32_t off = target ? slot_b_offset() : slot_a_offset();
     uint32_t seq = g_seq + 1u;
 
     uint8_t page[FLASH_PORT_PAGE_SIZE];
@@ -132,8 +134,8 @@ bool settings_save(void) {
 
 void settings_reset(void) {
     // Erase both slots so the next boot finds no record and uses defaults.
-    flash_port_erase_sector(SLOT_A_OFFSET);
-    flash_port_erase_sector(SLOT_B_OFFSET);
+    flash_port_erase_sector(slot_a_offset());
+    flash_port_erase_sector(slot_b_offset());
     load_defaults();
     g_seq = 0;
     active_slot = 1;  // next save targets slot A

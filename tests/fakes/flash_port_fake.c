@@ -9,8 +9,14 @@
 #include "fakes.h"
 #include "flash_port.h"
 
-static uint8_t flash[FLASH_PORT_TOTAL_SIZE];
+// Fixed host-side region (mirrors a 2 MB Pico; the value only has to be
+// self-consistent for the tests, which derive slot offsets from flash_port_size()).
+#define FAKE_FLASH_SIZE (2u * 1024u * 1024u)
+
+static uint8_t flash[FAKE_FLASH_SIZE];
 static bool fail_next_program;
+
+uint32_t flash_port_size(void) { return FAKE_FLASH_SIZE; }
 
 void flash_fake_reset(void) {
     memset(flash, 0xFF, sizeof(flash));

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml/badge.svg)](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml)
 [![License: GPL-3.0-or-later OR Commercial](https://img.shields.io/badge/license-GPL--3.0--or--later%20OR%20Commercial-blue.svg)](LICENSE)
-[![Platform: RP2040](https://img.shields.io/badge/platform-RP2040-8a2be2.svg)](https://www.raspberrypi.com/products/raspberry-pi-pico/)
+[![Platform: RP2040 / RP2350](https://img.shields.io/badge/platform-RP2040%20%2F%20RP2350-8a2be2.svg)](https://www.raspberrypi.com/products/raspberry-pi-pico/)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome%20(CLA)-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -68,8 +68,11 @@ Put the SDK and toolchain **next to this repo** (siblings of the `DUTler/` direc
 finds them automatically — or export `PICO_SDK_PATH` / `PICO_TOOLCHAIN_PATH` / `picotool_DIR`
 yourself (env.sh honors anything already set, which is how CI pins its own paths).
 
-**Target:** a stock **Raspberry Pi Pico (RP2040)** (`PICO_BOARD=pico`) and a USB cable. A single
-jumper wire between **GP0 and GP1** is handy for the bridge loopback self-test.
+**Target:** a stock **Raspberry Pi Pico (RP2040)** (`PICO_BOARD=pico`, the default) or a
+**Pico 2 W (RP2350)** (`PICO_BOARD=pico2_w`), plus a USB cable. The firmware adapts the flash
+layout to the board's actual size at runtime; on the wireless Pico 2 W the activity LED hangs off
+the CYW43 chip and is simply skipped (no wireless stack is pulled in). A single jumper wire between
+**GP0 and GP1** is handy for the bridge loopback self-test.
 
 ## Quick start
 
@@ -86,6 +89,7 @@ cmake -S . -B build -G Ninja \
   -DPICO_SDK_PATH="$PICO_SDK_PATH" \
   -DPICO_TOOLCHAIN_PATH="$PICO_TOOLCHAIN_PATH" \
   -Dpicotool_DIR="$picotool_DIR"
+# …add -DPICO_BOARD=pico2_w to build for the Pico 2 W (RP2350) instead.
 cmake --build build
 
 # flash: hold BOOTSEL while plugging in the Pico, then
@@ -274,7 +278,7 @@ DUTler/
 │   ├── settings.c/.h      # power-loss-safe A/B settings: slot logic (unit-tested)
 │   ├── settings_codec.c/.h # pure record (de)serialization — unit-tested
 │   ├── flash_port.h       # flash hardware seam (impl below; RAM fake in tests/)
-│   ├── flash_port_rp2040.c # SDK flash I/O + critical section behind flash_port.h
+│   ├── flash_port_pico.c  # SDK flash I/O + critical section behind flash_port.h (RP2040/RP2350)
 │   └── util/              # auxiliary helpers (not product logic)
 │       ├── crc32.c/.h     # pure CRC-32 — unit-tested
 │       ├── numparse.c/.h  # pure integer parsing (parse_u32) — unit-tested
