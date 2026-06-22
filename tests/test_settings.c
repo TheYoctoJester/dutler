@@ -8,10 +8,10 @@
 #include <string.h>
 
 #include "config.h"
+#include "core/settings.h"
+#include "core/settings_codec.h"
 #include "fakes.h"
-#include "flash_port.h"
-#include "settings.h"
-#include "settings_codec.h"
+#include "platform/flash_port.h"
 #include "unity.h"
 #include "util/crc32.h"
 

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
-#include "debug.h"
+#include "platform/debug.h"
 
 #include <stdarg.h>
 #include <stdint.h>

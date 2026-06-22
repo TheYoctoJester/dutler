@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
-#include "settings.h"
+#include "core/settings.h"
 
 #include <string.h>
 
 #include "config.h"
-#include "flash_port.h"
-#include "settings_codec.h"
+#include "core/settings_codec.h"
+#include "platform/flash_port.h"
 
 settings_t g_settings;
 

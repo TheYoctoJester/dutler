@@ -51,19 +51,19 @@ endfunction()
 # Pure logic — no fakes needed.
 dutler_test(test_pure
     test_pure.c
-    ${SRC}/util/crc32.c ${SRC}/util/numparse.c ${SRC}/settings_codec.c)
+    ${SRC}/util/crc32.c ${SRC}/util/numparse.c ${SRC}/core/settings_codec.c)
 
 # Persistence — real settings.c against the RAM flash fake.
 dutler_test(test_settings
     test_settings.c
-    ${SRC}/settings.c ${SRC}/settings_codec.c ${SRC}/util/crc32.c
+    ${SRC}/core/settings.c ${SRC}/core/settings_codec.c ${SRC}/util/crc32.c
     fakes/flash_port_fake.c)
 target_include_directories(test_settings PRIVATE fakes)
 
 # Command interpreter — real command.c/outputs.c/settings.c + fakes + SDK shims.
 dutler_test(test_command
     test_command.c
-    ${SRC}/command.c ${SRC}/outputs.c ${SRC}/settings.c ${SRC}/settings_codec.c
+    ${SRC}/core/command.c ${SRC}/core/outputs.c ${SRC}/core/settings.c ${SRC}/core/settings_codec.c
     ${SRC}/util/crc32.c ${SRC}/util/numparse.c
     fakes/flash_port_fake.c fakes/fake_console.c fakes/fake_bridge.c
     fakes/fake_debug.c fakes/fake_sdk.c)

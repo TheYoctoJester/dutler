@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "fakes.h"
-#include "flash_port.h"
+#include "platform/flash_port.h"
 
 // Host-side flash region. The backing store is sized for the largest board we
 // build for (Pico 2, 4 MB); the *reported* size is runtime-settable so tests can

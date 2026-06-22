@@ -1,16 +1,16 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
-#include "bridge.h"
+#include "platform/bridge.h"
 
 #include "config.h"
+#include "core/settings.h"
 #include "hardware/irq.h"
 #include "hardware/uart.h"
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
-#include "settings.h"
+#include "platform/debug.h"
 #include "tusb.h"
-#include "util/debug.h"
 
 static uart_parity_t parity_enum(uint8_t p) {
     return p == 1 ? UART_PARITY_ODD : p == 2 ? UART_PARITY_EVEN : UART_PARITY_NONE;

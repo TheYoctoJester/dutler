@@ -7,11 +7,11 @@
 
 #include <string.h>
 
-#include "command.h"
 #include "config.h"
+#include "core/command.h"
+#include "core/outputs.h"
+#include "core/settings.h"
 #include "fakes.h"
-#include "outputs.h"
-#include "settings.h"
 #include "unity.h"
 
 void setUp(void) {

@@ -5,8 +5,8 @@
 // on the replies.
 #include <string.h>
 
-#include "console.h"
 #include "fakes.h"
+#include "platform/console.h"
 
 #define CAP 4096
 static char buf[CAP];

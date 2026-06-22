@@ -73,9 +73,31 @@ The host suite uses **[Unity](https://www.throwtheswitch.org/unity)** (vendored 
 `tests/vendor/`) and is split into runners: `test_pure.c` (CRC/parsing/codec), `test_settings.c`
 (the A/B flash store, via the RAM fake in `tests/fakes/`), and `test_command.c` (the command
 interpreter, via the fakes + minimal SDK shims in `tests/shims/`). Hardware is abstracted behind
-`src/flash_port.h` (real impl `flash_port_pico.c`; the tests link `tests/fakes/flash_port_fake.c`).
-New logic should come with a test in the matching runner — or a new one wired up in
-`tests/CMakeLists.txt`.
+`src/platform/flash_port.h` (real impl `flash_port_pico.c`; the tests link
+`tests/fakes/flash_port_fake.c`). New logic should come with a test in the matching runner — or a
+new one wired up in `tests/CMakeLists.txt`.
+
+## Source layout & the layering rule
+
+`src/` is organised by dependency, and headers are included by their path from `src/`
+(`#include "core/settings.h"`, `"platform/bridge.h"`, `"util/crc32.h"`) so every include announces
+which layer it reaches into:
+
+- **`src/core/`** — application logic (command interpreter, output model, settings store + codec).
+  This is the real code the host suite exercises.
+- **`src/platform/`** — everything bound to the board, the Pico SDK, or TinyUSB (the flash port,
+  the UART/USB bridge, the CDC console, USB descriptors, the debug log). Each of these has a host
+  fake in `tests/fakes/`.
+- **`src/util/`** — pure, product-agnostic helpers (CRC-32, integer parsing).
+- **`src/main.c`** — the composition root that wires the layers together; it may touch anything.
+
+**The invariant: everything in `core/` must build and pass on the host** (against `tests/shims/` +
+`tests/fakes/`) — it must never depend on real *hardware behaviour*. It may make the handful of
+thin SDK calls the shims already cover (GPIO, timers, `tud_task`, bootrom reset); anything with
+behaviour worth verifying goes behind a **seam** — an interface used by `core/` with a real impl in
+`platform/` and a fake in `tests/fakes/` (as `flash_port`, `bridge`, and `console` do). If you reach
+for an SDK symbol that isn't shimmed, that's the signal to either add a shim or move the code to
+`platform/`. Don't let `core/` come to depend on the real hardware; that's what makes it testable.
 
 ## Commits & pull requests
 
