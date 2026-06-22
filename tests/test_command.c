@@ -97,6 +97,11 @@ static void test_name_validation(void) {
     ASSERT_SAID("command word");
 
     fake_console_clear();
+    run("name 1 selftest");  // every dispatch verb must be reserved, incl. selftest
+    ASSERT_SAID("command word");
+    TEST_ASSERT_EQUAL_STRING("", g_settings.out_name[0]);
+
+    fake_console_clear();
     run("name 1 abcdefghijklmnopqrst");  // 20 chars, >= OUT_NAME_MAX
     ASSERT_SAID("too long");
 

@@ -103,9 +103,12 @@ static void cmd_out(char **sp) {
 }
 
 // Command words that an output name must not shadow (they are matched first).
+// MUST list every top-level verb handled in command_dispatch() below — otherwise
+// a name alias can be created that the dispatcher then shadows (unusable alias).
 static bool is_reserved_word(const char *w) {
-    static const char *const reserved[] = {"out",  "name",    "set",   "save",          "status",
-                                           "help", "bootsel", "reset", "factory-reset", "version"};
+    static const char *const reserved[] = {"out",      "name",          "set",     "save",
+                                           "status",   "help",          "bootsel", "reset",
+                                           "selftest", "factory-reset", "version"};
     for (size_t i = 0; i < sizeof(reserved) / sizeof(reserved[0]); i++)
         if (strcmp(w, reserved[i]) == 0) return true;
     return false;
