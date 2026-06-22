@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
-#include "crc32.h"
+#include "util/crc32.h"
 
 uint32_t dutler_crc32(const void *data, size_t len) {
     const uint8_t *p = (const uint8_t *)data;

@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-#include "settings_codec.h"
+#include "core/settings_codec.h"
 #include "unity.h"
 #include "util/crc32.h"
 #include "util/numparse.h"

@@ -264,22 +264,24 @@ DUTler/
 ├── CMakeLists.txt
 ├── pico_sdk_import.cmake
 ├── include/config.h       # pins, output count/polarity, UART, USB IDs — main knobs
-├── src/
-│   ├── main.c             # init + super-loop (tud_task / bridge / console)
-│   ├── tusb_config.h      # TinyUSB: 3× CDC, full-speed device
-│   ├── usb_descriptors.c  # composite triple-CDC descriptors + chip-ID serial
-│   ├── bridge.c/.h        # CDC0 <-> uart0, IRQ RX ring buffer, line-coding sync
-│   ├── outputs.c/.h       # GPIO output layer (power relay + strap/reset MOSFETs)
-│   ├── console.c/.h       # CDC1 line transport (read/assemble lines, write replies)
-│   ├── command.c/.h       # control-port command interpreter (parse + dispatch)
-│   ├── settings.c/.h      # power-loss-safe A/B settings: slot logic (unit-tested)
-│   ├── settings_codec.c/.h # pure record (de)serialization — unit-tested
-│   ├── flash_port.h       # flash hardware seam (impl below; RAM fake in tests/)
-│   ├── flash_port_pico.c  # SDK flash I/O + critical section behind flash_port.h (RP2040/RP2350)
-│   └── util/              # auxiliary helpers (not product logic)
+├── src/                   # layered by dependency (see CONTRIBUTING for the rule)
+│   ├── main.c             # composition root: init + super-loop (tud_task / bridge / console)
+│   ├── core/             # portable application logic — the real code the host tests run
+│   │   ├── command.c/.h   # control-port command interpreter (parse + dispatch)
+│   │   ├── outputs.c/.h   # output line model (power relay + strap/reset MOSFETs)
+│   │   ├── settings.c/.h  # power-loss-safe A/B settings: slot logic (unit-tested)
+│   │   └── settings_codec.c/.h # pure record (de)serialization — unit-tested
+│   ├── platform/         # board/SDK + TinyUSB — each has a host fake in tests/fakes/
+│   │   ├── flash_port.h   # flash hardware seam (impl below; RAM fake in tests/)
+│   │   ├── flash_port_pico.c # SDK flash I/O + critical section (RP2040/RP2350)
+│   │   ├── bridge.c/.h    # CDC0 <-> uart0, IRQ RX ring buffer, line-coding sync
+│   │   ├── console.c/.h   # CDC1 line transport (read/assemble lines, write replies)
+│   │   ├── usb_descriptors.c # composite triple-CDC descriptors + chip-ID serial
+│   │   ├── tusb_config.h  # TinyUSB: 3× CDC, full-speed device
+│   │   └── debug.c/.h     # dbg_printf() -> CDC2 debug-log port
+│   └── util/             # pure, product-agnostic helpers
 │       ├── crc32.c/.h     # pure CRC-32 — unit-tested
-│       ├── numparse.c/.h  # pure integer parsing (parse_u32) — unit-tested
-│       └── debug.c/.h     # dbg_printf() -> CDC2 debug-log port
+│       └── numparse.c/.h  # pure integer parsing (parse_u32) — unit-tested
 ├── tests/                 # host unit tests (Unity): test_{pure,settings,command}
 │   ├── fakes/             # RAM flash + console/bridge/debug/SDK test doubles
 │   ├── shims/             # minimal pico/*, tusb.h headers for host compilation

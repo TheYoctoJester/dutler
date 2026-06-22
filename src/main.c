@@ -1,15 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
-#include "bridge.h"
 #include "config.h"
-#include "console.h"
+#include "core/outputs.h"
+#include "core/settings.h"
 #include "hardware/watchdog.h"
-#include "outputs.h"
 #include "pico/stdlib.h"
-#include "settings.h"
+#include "platform/bridge.h"
+#include "platform/console.h"
+#include "platform/debug.h"
 #include "tusb.h"
-#include "util/debug.h"
 
 // The main loop sleeps with best_effort_wfe_or_timeout(), which relies on the
 // default alarm pool to schedule the bounded wake that keeps the loop turning

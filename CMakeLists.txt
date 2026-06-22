@@ -47,21 +47,22 @@ endif()
 
 add_executable(dutler
     src/main.c
-    src/usb_descriptors.c
-    src/bridge.c
-    src/outputs.c
-    src/console.c
-    src/command.c
-    src/settings.c
-    src/settings_codec.c
-    src/flash_port_pico.c
+    src/core/command.c
+    src/core/outputs.c
+    src/core/settings.c
+    src/core/settings_codec.c
+    src/platform/bridge.c
+    src/platform/console.c
+    src/platform/debug.c
+    src/platform/flash_port_pico.c
+    src/platform/usb_descriptors.c
     src/util/crc32.c
     src/util/numparse.c
-    src/util/debug.c
 )
 
 target_include_directories(dutler PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/src      # tusb_config.h lives here
+    ${CMAKE_CURRENT_LIST_DIR}/src          # headers referenced as core/…, platform/…, util/…
+    ${CMAKE_CURRENT_LIST_DIR}/src/platform  # so TinyUSB finds tusb_config.h
     ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
@@ -72,9 +73,11 @@ target_include_directories(dutler PRIVATE
 # so local dev builds stay lenient.
 option(DUTLER_WERROR "Treat compiler warnings as errors on DUTler's own sources" OFF)
 set(DUTLER_OWN_SOURCES
-    src/main.c src/usb_descriptors.c src/bridge.c src/outputs.c src/console.c
-    src/command.c src/settings.c src/settings_codec.c src/flash_port_pico.c
-    src/util/crc32.c src/util/numparse.c src/util/debug.c)
+    src/main.c
+    src/core/command.c src/core/outputs.c src/core/settings.c src/core/settings_codec.c
+    src/platform/bridge.c src/platform/console.c src/platform/debug.c
+    src/platform/flash_port_pico.c src/platform/usb_descriptors.c
+    src/util/crc32.c src/util/numparse.c)
 set(DUTLER_WARNINGS -Wall -Wextra -Wshadow -Wdouble-promotion -Wconversion)
 if(DUTLER_WERROR)
     list(APPEND DUTLER_WARNINGS -Werror)

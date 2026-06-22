@@ -1,22 +1,22 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
-#include "command.h"
+#include "core/command.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "bridge.h"
 #include "config.h"
-#include "console.h"
-#include "outputs.h"
+#include "core/outputs.h"
+#include "core/settings.h"
 #include "pico/bootrom.h"
 #include "pico/time.h"
-#include "settings.h"
+#include "platform/bridge.h"
+#include "platform/console.h"
+#include "platform/debug.h"
 #include "tusb.h"
-#include "util/debug.h"
 #include "util/numparse.h"
 
 extern bool g_boot_by_watchdog;  // defined in main.c

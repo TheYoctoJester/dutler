@@ -4,11 +4,11 @@
 // SDK-backed flash port for the whole Pico family (RP2040 + RP2350). The flash
 // API and 4 KB/256 B geometry are identical across both; only the total size
 // differs, reported at runtime by flash_port_size().
-#include "flash_port.h"
 #include "hardware/flash.h"
 #include "hardware/sync.h"
 #include "hardware/watchdog.h"
 #include "pico/stdlib.h"
+#include "platform/flash_port.h"
 
 // Keep the build-time geometry honest against the SDK's notion of this chip.
 _Static_assert(FLASH_PORT_SECTOR_SIZE == FLASH_SECTOR_SIZE, "sector size mismatch vs SDK");

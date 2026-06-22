@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
-#include "console.h"
+#include "platform/console.h"
 
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "command.h"
 #include "config.h"
+#include "core/command.h"
 #include "tusb.h"
 
 #define LINE_MAX 80
