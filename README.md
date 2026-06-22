@@ -223,12 +223,12 @@ carries a monotonic sequence number, `save` writes the *inactive* slot and verif
 it counts, and load picks the valid slot with the highest sequence. The active slot is never
 erased, so a **failed or power-interrupted save cannot lose the last good config** — load just
 falls back to the older slot (the half-written one fails its CRC). A blank/garbage pair falls
-back to safe defaults. The record is **versioned**; `src/settings.c` documents the append-only
+back to safe defaults. The record is **versioned**; `src/core/settings.c` documents the append-only
 evolution rules and migrates the older format in place (v1 single-slot records are upgraded to
 v2 A/B on first boot, preserving names + baud).
 
 **Outputs themselves always boot OFF** — their state is deliberately not persisted, so a power
-blip can never silently re-energize a load. Implemented in `src/settings.c`
+blip can never silently re-energize a load. Implemented in `src/core/settings.c`
 (struct, CRC32, flash erase/program) — note flash writes briefly mask interrupts (a few ms),
 so avoid `save` in the middle of heavy bridge traffic.
 
@@ -301,7 +301,7 @@ screen /dev/cu.usbmodemXXXX5 115200      # or: python3 tools/debug_capture.py
 The firmware also logs **`bridge: RX overflow ...`** here (rate-limited) if the UART-to-USB
 ring ever drops bytes because the host stopped draining — so silent data loss becomes visible.
 
-Add your own with `dbg_printf("...")` (declared in `src/util/debug.h`). Output is only sent while a
+Add your own with `dbg_printf("...")` (declared in `src/platform/debug.h`). Output is only sent while a
 host has the port open, so calls are cheap when unused. **Do not call `dbg_printf` from an
 interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 
