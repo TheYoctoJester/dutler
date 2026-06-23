@@ -55,8 +55,8 @@ The MOSFET gates have 220 Ω series resistors (R2/R3) and 10 kΩ gate-to-source 
 (R1/R4), so both MOSFETs sit OFF at power-on. The relay idles de-energized (ULN2003 input low),
 and its coil free-wheels through the ULN2003's internal diode (COM tied to the coil supply).
 
-> **Relay coil voltage:** K1's coil is wired to **VBUS (5 V)**. Fit the **5 V** variant of the
-> FINDER 34.51 — a 12 V/24 V part will not actuate. See the BOM notes in
+> **Relay coil voltage:** K1's coil is wired to **VBUS (5 V)**. Fit the 5 V FINDER 34.51
+> (`34.51.7.005.0010`) — a 12 V/24 V part will not actuate. See the BOM notes in
 > [`v1/DUTler_v1/BOM.md`](v1/DUTler_v1/BOM.md).
 
 ## License
