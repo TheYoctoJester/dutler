@@ -103,21 +103,21 @@ screen /dev/cu.usbmodemXXXX1 115200     # the DUT serial console (Linux: tio/min
 
 See **Build**, **Flash** and **Test** below for the details, and **Wiring** for pin assignments.
 
-## Wiring (defaults, see `include/config.h`)
+## Wiring (firmware defaults — `include/config.h`)
 
-| Function | Pin |
-|----------|-----|
-| Bridge UART TX | GP0 → device RX |
-| Bridge UART RX | GP1 ← device TX |
-| Control out 1 — MOSFET | GP2 — low-side driver for a DUT strap/boot-mode or reset line |
-| Control out 2 — MOSFET | GP3 — low-side driver for a DUT strap/boot-mode or reset line |
-| Control out 3 — power relay | GP4 — switch DUT power |
-| Control out 4 — spare | GP5 — defined in firmware, **not wired on the v1 HAT** |
-| Activity LED | GP25 (on-board) |
-| GND | any GND pin — **share ground with the DUT and any relay/MOSFET board** |
+These are the firmware's pin assignments. They match the **v1 HAT** in [`hardware/`](hardware/)
+one-for-one; on a bare Pico, wire your own driver modules to the same pins.
 
-(These match the v1 HAT in `hardware/`, where outs 1–2 are 2N7000 MOSFETs and out 3 drives a
-relay via a ULN2003; on a bare Pico with jumpers, wire your own driver modules to the same pins.)
+| Function | Pin | On the v1 HAT |
+|----------|-----|---------------|
+| Bridge UART TX | GP0 → device RX | header J2 |
+| Bridge UART RX | GP1 ← device TX | header J2 |
+| Control out 1 — MOSFET | GP2 — low-side strap/boot-mode or reset line | 2N7000 → J1 |
+| Control out 2 — MOSFET | GP3 — low-side strap/boot-mode or reset line | 2N7000 → J3 |
+| Control out 3 — power relay | GP4 — switch DUT power | ULN2003 → relay → J4 |
+| Control out 4 — spare | GP5 — firmware-defined, no driver on v1 | — |
+| Activity LED | GP25 (on-board) | — |
+| GND | any GND pin — **share ground with the DUT and any relay/MOSFET board** | J2 / J1 / J3 |
 
 All control outputs are 3.3 V logic, **active-high, and OFF at boot**. In firmware they're just
 generic switched GPIOs (all driven via the `out`/`name` commands); their *intended* roles are:

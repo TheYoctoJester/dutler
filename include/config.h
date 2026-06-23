@@ -43,7 +43,11 @@
 //   out 1 -> GP2 -> low-side MOSFET (Q1) -> J1
 //   out 2 -> GP3 -> low-side MOSFET (Q2) -> J3
 //   out 3 -> GP4 -> ULN2003 -> power relay (K1) -> J4
-//   out 4 -> GP5 -> spare; defined here but NOT wired on the v1 HAT
+//   out 4 -> GP5 -> intentional spare: no driver on the v1 HAT, but kept as a
+//            ready-to-use 4th output for bare-Pico wiring and future board revs.
+// OUT_COUNT stays 4 on purpose: it sizes the persisted settings record
+// (settings_v1_t in settings_codec.c), so shrinking it is a stored-format break
+// that needs a SETTINGS_VERSION bump + migrator, not a one-line edit.
 #define OUT_COUNT 4
 // GPIO pins for outputs 1..OUT_COUNT. Avoid GP0/GP1 (bridge UART).
 #define OUT_PINS {2, 3, 4, 5}
