@@ -109,22 +109,28 @@ See **Build**, **Flash** and **Test** below for the details, and **Wiring** for 
 |----------|-----|
 | Bridge UART TX | GP0 → device RX |
 | Bridge UART RX | GP1 ← device TX |
-| Control out 1 — power relay | GP2 — switch DUT power |
-| Control out 2–4 — MOSFET | GP3, GP4, GP5 — assert DUT strap/boot-mode & reset pins |
+| Control out 1 — MOSFET | GP2 — low-side driver for a DUT strap/boot-mode or reset line |
+| Control out 2 — MOSFET | GP3 — low-side driver for a DUT strap/boot-mode or reset line |
+| Control out 3 — power relay | GP4 — switch DUT power |
+| Control out 4 — spare | GP5 — defined in firmware, **not wired on the v1 HAT** |
 | Activity LED | GP25 (on-board) |
 | GND | any GND pin — **share ground with the DUT and any relay/MOSFET board** |
+
+(These match the v1 HAT in `hardware/`, where outs 1–2 are 2N7000 MOSFETs and out 3 drives a
+relay via a ULN2003; on a bare Pico with jumpers, wire your own driver modules to the same pins.)
 
 All control outputs are 3.3 V logic, **active-high, and OFF at boot**. In firmware they're just
 generic switched GPIOs (all driven via the `out`/`name` commands); their *intended* roles are:
 
-- **Out 1 → a power relay** — to cut/restore DUT power. Use a relay **module** with its own
-  driver/opto stage; don't switch a coil straight off a GPIO.
-- **Outs 2–4 → low-side MOSFET gates** — to pull the DUT's strapping/boot-mode and reset lines
+- **Outs 1 & 2 → low-side MOSFET gates** — to pull the DUT's strapping/boot-mode and reset lines
   (e.g. force USB/serial download mode, then toggle reset). The MOSFET does the level shift and
   the pull; the GPIO only drives its gate. Match the DUT's logic level and share ground.
+- **Out 3 → a power relay** — to cut/restore DUT power. Use a relay **module** with its own
+  driver/opto stage; don't switch a coil straight off a GPIO.
+- **Out 4 → spare** — a free GPIO with no driver on the v1 HAT; wire your own if you need a fourth.
 
 Tip: alias the outputs to their jobs once and drive them by name —
-`name 1 power`, `name 2 bootmode`, `name 3 reset`, then `power off` / `bootmode on` / `reset on`.
+`name 1 bootmode`, `name 2 reset`, `name 3 power`, then `power off` / `bootmode on` / `reset on`.
 Count, pins and polarity live in `include/config.h` (`OUT_*`); `OUT_ACTIVE_LOW 1` flips sense.
 
 ## Build
