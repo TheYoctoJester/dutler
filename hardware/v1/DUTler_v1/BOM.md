@@ -7,14 +7,14 @@ through-hole (THT).
 | Ref    | Qty | Value / Part            | Package / Footprint                         | Notes |
 |--------|-----|-------------------------|---------------------------------------------|-------|
 | A1     | 1   | Raspberry Pi Pico       | Pico module on 2×20 0.1″ headers            | The MCU; socket it so it can be replaced. |
-| U1     | 1   | ULN2003A                | DIP-16 (W7.62 mm)                           | Darlington array; drives the relay coil and provides coil flyback (COM → VBUS). |
+| U1     | 1   | ULN2003                 | DIP-16 (W7.62 mm)                           | Darlington array; drives the relay coil and provides coil flyback (COM → VBUS). |
 | K1     | 1   | FINDER `34.51.7.005.0010` (**5 V DC coil**) | THT SPDT (Finder 34.51 vertical) | **Coil runs off VBUS = 5 V** — this is the 5 V order code; a 12 V/24 V part will not actuate. |
 | Q1, Q2 | 2   | 2N7000                  | TO-92 (inline)                              | Logic-level N-channel MOSFET, low-side switch. |
 | R1, R4 | 2   | 10 kΩ                   | Axial THT (DIN0207, P10.16 mm)              | MOSFET gate-to-source pull-down → MOSFET OFF at power-on. |
 | R2, R3 | 2   | 220 Ω                   | Axial THT (DIN0207, P10.16 mm)              | MOSFET gate series resistor. |
 | J1, J3 | 2   | 1×02 pin header, 2.54 mm | PinHeader 1×02 vertical                    | MOSFET output: pin 1 = drain (switched), pin 2 = GND. |
 | J2     | 1   | 1×03 pin header, 2.54 mm | PinHeader 1×03 vertical                    | Bridge UART: TX (GP0), RX (GP1), GND. |
-| J4     | 1   | 1×03 terminal block, 5.08 mm | Phoenix MKDS-1,5-3 (or compatible)     | Relay contacts: COM / NO / NC. |
+| J4     | 1   | 1×03 terminal block, 5.08 mm | Phoenix MKDS-1,5-3 (or compatible)     | Relay contacts: pin 1 = NC, pin 2 = NO, pin 3 = COM (Finder 12 / 14 / 11). Energized = COM→NO. |
 
 ## Assembly & wiring notes
 
