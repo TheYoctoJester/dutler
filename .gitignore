@@ -3,3 +3,15 @@ build*/
 # Editor/tooling caches
 .cache/
 .DS_Store
+
+# KiCad — keep design source (.kicad_pro/.kicad_sch/.kicad_pcb), ignore the rest
+# per-user local settings (window state, etc.)
+*.kicad_prl
+# KiCad auto-backup snapshots
+*-backups/
+# KiCad local-history plugin (a nested git repo)
+.history/
+# Generated fabrication outputs — regenerate from the .kicad_pcb at fab time
+*.gbr
+*.gbrjob
+*.drl
