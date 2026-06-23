@@ -38,8 +38,12 @@
 #define BRIDGE_BAUD_MIN 50
 #define BRIDGE_BAUD_MAX 4000000
 
-// ---- Control outputs (power relay + MOSFET strap/reset drivers) -----
-// Exposed as `out 1..OUT_COUNT` on the control port.
+// ---- Control outputs (MOSFET strap/reset drivers + power relay) -----
+// Exposed as `out 1..OUT_COUNT` on the control port. On the v1 HAT these map to:
+//   out 1 -> GP2 -> low-side MOSFET (Q1) -> J1
+//   out 2 -> GP3 -> low-side MOSFET (Q2) -> J3
+//   out 3 -> GP4 -> ULN2003 -> power relay (K1) -> J4
+//   out 4 -> GP5 -> spare; defined here but NOT wired on the v1 HAT
 #define OUT_COUNT 4
 // GPIO pins for outputs 1..OUT_COUNT. Avoid GP0/GP1 (bridge UART).
 #define OUT_PINS {2, 3, 4, 5}
