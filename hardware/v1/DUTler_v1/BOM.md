@@ -8,7 +8,7 @@ through-hole (THT).
 |--------|-----|-------------------------|---------------------------------------------|-------|
 | A1     | 1   | Raspberry Pi Pico       | Pico module on 2×20 0.1″ headers            | The MCU; socket it so it can be replaced. |
 | U1     | 1   | ULN2003A                | DIP-16 (W7.62 mm)                           | Darlington array; drives the relay coil and provides coil flyback (COM → VBUS). |
-| K1     | 1   | FINDER 34.51, **5 V DC coil** | THT SPDT (Finder 34.51 vertical)      | **Coil runs off VBUS = 5 V.** Order the 5 V variant (e.g. `34.51.7.005.0010` — confirm) — a 12 V/24 V part will not actuate. |
+| K1     | 1   | FINDER `34.51.7.005.0010` (**5 V DC coil**) | THT SPDT (Finder 34.51 vertical) | **Coil runs off VBUS = 5 V** — this is the 5 V order code; a 12 V/24 V part will not actuate. |
 | Q1, Q2 | 2   | 2N7000                  | TO-92 (inline)                              | Logic-level N-channel MOSFET, low-side switch. |
 | R1, R4 | 2   | 10 kΩ                   | Axial THT (DIN0207, P10.16 mm)              | MOSFET gate-to-source pull-down → MOSFET OFF at power-on. |
 | R2, R3 | 2   | 220 Ω                   | Axial THT (DIN0207, P10.16 mm)              | MOSFET gate series resistor. |
