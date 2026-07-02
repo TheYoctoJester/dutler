@@ -72,11 +72,12 @@ Put the SDK and toolchain **next to this repo** (siblings of the `DUTler/` direc
 finds them automatically — or export `PICO_SDK_PATH` / `PICO_TOOLCHAIN_PATH` / `picotool_DIR`
 yourself (env.sh honors anything already set, which is how CI pins its own paths).
 
-**Target:** a stock **Raspberry Pi Pico (RP2040)** (`PICO_BOARD=pico`, the default) or a
-**Pico 2 W (RP2350)** (`PICO_BOARD=pico2_w`), plus a USB cable. The firmware adapts the flash
-layout to the board's actual size at runtime; on the wireless Pico 2 W the activity LED hangs off
-the CYW43 chip and is simply skipped (no wireless stack is pulled in). A single jumper wire between
-**GP0 and GP1** is handy for the bridge loopback self-test.
+**Target:** a stock **Raspberry Pi Pico (RP2040)** (`PICO_BOARD=pico`, the default), a
+**Pico 2 (RP2350)** (`PICO_BOARD=pico2`), or a **Pico 2 W (RP2350)** (`PICO_BOARD=pico2_w`), plus
+a USB cable. The firmware adapts the flash layout to the board's actual size at runtime; on the
+wireless Pico 2 W the activity LED hangs off the CYW43 chip and is simply skipped (no wireless stack
+is pulled in), whereas the non-wireless Pico 2 keeps its GP25 LED heartbeat. A single jumper wire
+between **GP0 and GP1** is handy for the bridge loopback self-test.
 
 ## Quick start
 
@@ -93,7 +94,7 @@ cmake -S . -B build -G Ninja \
   -DPICO_SDK_PATH="$PICO_SDK_PATH" \
   -DPICO_TOOLCHAIN_PATH="$PICO_TOOLCHAIN_PATH" \
   -Dpicotool_DIR="$picotool_DIR"
-# …add -DPICO_BOARD=pico2_w to build for the Pico 2 W (RP2350) instead.
+# …add -DPICO_BOARD=pico2 (or pico2_w for the wireless Pico 2) to build for the RP2350 instead.
 cmake --build build
 
 # flash: hold BOOTSEL while plugging in the Pico, then
