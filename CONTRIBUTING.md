@@ -6,7 +6,8 @@ requests. That said, issues and PRs are welcome.
 
 DUTler is licensed under the **Apache License, Version 2.0**. By contributing, you agree that your
 contribution is provided under Apache-2.0 and you certify the Developer Certificate of Origin (DCO)
-by signing off your commits (`git commit -s`). There is **no CLA**.
+by signing off your commits — see [Commits & pull requests](#commits--pull-requests) below. There
+is **no CLA**.
 
 ## Before you start
 
@@ -46,8 +47,8 @@ affects device behaviour, **verify it on real hardware** and say so in the PR.
   // SPDX-FileCopyrightText: <year> Northern.tech AS
   // SPDX-License-Identifier: Apache-2.0
   ```
-  (`#` comment for shell/CMake/Python.) The repository keeps copyright notices
-  under Northern.tech AS; you keep authorship credit via git history.
+  (`#` comment for shell/CMake/Python.) The repository keeps copyright notices under Northern.tech
+  AS; you keep authorship credit via git history.
 
 ## Tests & CI checks
 
@@ -107,6 +108,9 @@ for an SDK symbol that isn't shimmed, that's the signal to either add a shim or 
 
 - Write clear, imperative commit messages explaining **why**, not just what.
 - **Sign off every commit** (Developer Certificate of Origin): `git commit -s` adds a
-  `Signed-off-by:` line certifying you wrote it / have the right to submit it.
+  `Signed-off-by:` line certifying you wrote it / have the right to submit it and that it may be
+  distributed under the project's Apache-2.0 license. This is the only agreement required — there
+  is no CLA.
 - Keep PRs focused; rebase on the latest `main`; make sure it builds (and CI passes, once set up).
 
+Questions: contact Northern.tech (<https://northern.tech>).

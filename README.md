@@ -1,6 +1,7 @@
 # DUTler 🎩
 
 [![CI](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml/badge.svg)](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Platform: RP2040 / RP2350](https://img.shields.io/badge/platform-RP2040%20%2F%20RP2350-8a2be2.svg)](https://www.raspberrypi.com/products/raspberry-pi-pico/)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome%20(DCO)-brightgreen.svg)](CONTRIBUTING.md)
@@ -8,6 +9,10 @@
 > **A bench butler for your Device Under Test.**
 > Sponsored by [Northern.tech](https://northern.tech) as part of the
 > [Mender.io](https://mender.io) community engagement.
+
+> ⚠️ **Experimental.** DUTler is provided **"AS IS", without warranties or conditions of any
+> kind, and without any support**. It's an experiment, not a supported product — don't rely on
+> it for anything critical.
 
 DUTler is open-source firmware that turns a ~$4 **Raspberry Pi Pico (RP2040)** into a small,
 always-there sidecar for **OS-level integration work** — building, flashing, updating, and
@@ -273,20 +278,28 @@ interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 ## Contributing
 
 Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions are accepted
-under a DCO sign-off (`git commit -s`). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md),
-and report security issues privately per [`SECURITY.md`](SECURITY.md).
+under a DCO sign-off (`git commit -s`) — no CLA. Please follow the
+[Code of Conduct](CODE_OF_CONDUCT.md), and report security issues privately per
+[`SECURITY.md`](SECURITY.md).
 
 ## License
 
 Copyright © 2026 Northern.tech AS.
 
-DUTler is licensed under the **Apache License, Version 2.0** — see [`LICENSE`](LICENSE). Every
-source file carries the [SPDX](https://spdx.dev) identifier `Apache-2.0`. The software is
-distributed on an **"AS IS" basis, without warranties or conditions of any kind, and without
-support**.
+The firmware is licensed under the **Apache License, Version 2.0** — see [`LICENSE`](LICENSE) for
+the full text and [`NOTICE`](NOTICE) for attribution. Every source file carries the
+[SPDX](https://spdx.dev) identifier `Apache-2.0`.
 
-Third-party components keep their own licenses and are *not* relicensed — see
-[`THIRD_PARTY.md`](THIRD_PARTY.md).
+The software is distributed on an **"AS IS" basis, without warranties or conditions of any kind,
+and without support**.
+
+- **Hardware** design files in [`hardware/`](hardware/) are licensed under **CERN-OHL-P-2.0** (the
+  permissive CERN Open Hardware Licence) — see [`hardware/LICENSE`](hardware/LICENSE) and
+  `hardware/README.md`.
+- **Documentation** is offered under **CC-BY-4.0**.
+
+Third-party components keep their own licenses and are *not* relicensed (Pico SDK, TinyUSB,
+newlib, libgcc, …) — see [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 ## Acknowledgements
 
