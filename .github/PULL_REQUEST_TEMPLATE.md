@@ -12,5 +12,4 @@ Brief description of the change and the problem it solves. Link any related issu
 - [ ] Matches the surrounding code style; no new dependencies / floating point unless justified
 - [ ] New files carry the SPDX header (`Apache-2.0`)
 - [ ] Docs updated (README / comments) where relevant
-- [ ] Commits are signed off (`git commit -s`, DCO)
-- [ ] I have read and agree to the [CLA](../CLA.md)
+- [ ] Commits are signed off (`git commit -s`, DCO) — contribution provided under Apache-2.0

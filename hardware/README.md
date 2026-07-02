@@ -67,14 +67,11 @@ DUT supply through **COM (pin 3) and NO (pin 2)** if you want `on` to mean *powe
 
 Copyright © 2026 Northern.tech AS.
 
-The hardware design files in this directory are **dual-licensed** — use them under *either*:
-
-- **CERN-OHL-P-2.0** (open hardware) — see [`LICENSE`](LICENSE). This is the strongly-reciprocal
-  CERN Open Hardware Licence, the hardware analogue of the firmware's GPL: products and modified
-  designs based on these files must make their complete source available under the same licence; **or**
-- a **commercial / proprietary license** from **Northern.tech AS**, for use without CERN-OHL-P's
-  reciprocity obligations — see [`../COMMERCIAL.md`](../COMMERCIAL.md).
+The hardware design files in this directory are licensed under **CERN-OHL-P-2.0** — see
+[`LICENSE`](LICENSE). This is the **permissive** CERN Open Hardware Licence: you may use, study,
+modify, make and distribute products based on these files, without a reciprocal obligation to
+release your modifications. The design is provided **"AS IS", without warranties of any kind**.
 
 > KiCad's S-expression files carry no per-file comment headers, so the SPDX identifier
 > (`CERN-OHL-P-2.0`) is recorded here and in the project rather than inline. The firmware in the
-> parent repo is separately licensed **GPL-3.0-or-later OR commercial** (see [`../LICENSE`](../LICENSE)).
+> parent repo is licensed under **Apache-2.0** (see [`../LICENSE`](../LICENSE)).

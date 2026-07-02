@@ -1,0 +1,9 @@
+DUTler
+Copyright 2026 Northern.tech AS
+
+This product includes software developed at Northern.tech AS.
+
+This product bundles or builds against third-party components that are
+distributed under their own licenses (Raspberry Pi Pico SDK, TinyUSB, newlib,
+libgcc, Unity, ...). Those components are not relicensed; see THIRD_PARTY.md for
+the full list and their respective licenses.

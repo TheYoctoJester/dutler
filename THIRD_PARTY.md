@@ -1,10 +1,10 @@
 # Third-party components
 
-DUTler's own source is dual-licensed **GPL-3.0-or-later OR a commercial license** (see
-[`LICENSE`](LICENSE) and [`COMMERCIAL.md`](COMMERCIAL.md)). It is built on, and links
-against, the following third-party components. They keep their own licenses and are **not**
-relicensed by this project. Full license texts ship inside each component's source tree (in the
-Pico SDK / Arm GNU toolchain you install per the README *Requirements*).
+DUTler's own source is licensed under the **Apache License, Version 2.0** (see [`LICENSE`](LICENSE)
+and [`NOTICE`](NOTICE)). It is built on, and links against, the following third-party components.
+They keep their own licenses and are **not** relicensed by this project. Full license texts ship
+inside each component's source tree (in the Pico SDK / Arm GNU toolchain you install per the README
+*Requirements*).
 
 ## Linked into the firmware image
 
@@ -27,13 +27,13 @@ Pico SDK / Arm GNU toolchain you install per the README *Requirements*).
 
 ## Notes
 
-- BSD-3-Clause and MIT are GPL-compatible, so combining them with DUTler's GPL-3.0 source and
-  distributing the resulting firmware is fine.
+- BSD-3-Clause and MIT are permissive and Apache-2.0-compatible, so combining them with DUTler's
+  Apache-2.0 source and distributing the resulting firmware is fine.
 - `pico_sdk_import.cmake` in this repo is copied verbatim from the Pico SDK and retains its own
   Raspberry Pi BSD-3-Clause header (so it carries no DUTler SPDX header).
 - The vendored **Unity** sources under `tests/vendor/unity/` are host-test-only (never linked into
   the firmware image) and keep their upstream MIT headers; the SPDX and clang-format checks skip
   that directory.
 
-SPDX identifiers used in this repo: `Apache-2.0`
-(firmware), and — once hardware lands — `CERN-OHL-P-2.0` (board) and `CC-BY-4.0` (docs).
+SPDX identifiers used in this repo: `Apache-2.0` (firmware), `CERN-OHL-P-2.0` (hardware/board),
+and `CC-BY-4.0` (docs).

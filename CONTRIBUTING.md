@@ -1,9 +1,13 @@
 # Contributing to DUTler
 
-Thanks for your interest! DUTler is **dual-licensed** (GPL-3.0-or-later **or** a commercial
-license from Northern.tech AS — see [`COMMERCIAL.md`](COMMERCIAL.md)). To keep that possible,
-contributions are accepted only under a **Contributor License Agreement** (see
-[CLA](#contributor-license-agreement-cla) below). Please read this before opening a pull request.
+Thanks for your interest! **DUTler is experimental and unsupported** — it is offered "AS IS",
+without warranties of any kind, and there is no guaranteed response time on issues or pull
+requests. That said, issues and PRs are welcome.
+
+DUTler is licensed under the **Apache License, Version 2.0**. By contributing, you agree that your
+contribution is provided under Apache-2.0 and you certify the Developer Certificate of Origin (DCO)
+by signing off your commits — see [Commits & pull requests](#commits--pull-requests) below. There
+is **no CLA**.
 
 ## Before you start
 
@@ -43,8 +47,8 @@ affects device behaviour, **verify it on real hardware** and say so in the PR.
   // SPDX-FileCopyrightText: <year> Northern.tech AS
   // SPDX-License-Identifier: Apache-2.0
   ```
-  (`#` comment for shell/CMake/Python.) Per the CLA, the repository consolidates copyright notices
-  under Northern.tech AS; you keep authorship credit via git history.
+  (`#` comment for shell/CMake/Python.) The repository keeps copyright notices under Northern.tech
+  AS; you keep authorship credit via git history.
 
 ## Tests & CI checks
 
@@ -104,21 +108,9 @@ for an SDK symbol that isn't shimmed, that's the signal to either add a shim or 
 
 - Write clear, imperative commit messages explaining **why**, not just what.
 - **Sign off every commit** (Developer Certificate of Origin): `git commit -s` adds a
-  `Signed-off-by:` line certifying you wrote it / have the right to submit it.
+  `Signed-off-by:` line certifying you wrote it / have the right to submit it and that it may be
+  distributed under the project's Apache-2.0 license. This is the only agreement required — there
+  is no CLA.
 - Keep PRs focused; rebase on the latest `main`; make sure it builds (and CI passes, once set up).
 
-## Contributor License Agreement (CLA)
-
-Because DUTler is dual-licensed, the maintainer (**Northern.tech AS**) must be able to license your
-contribution under **both** the GPL and commercial terms. So, in addition to the DCO sign-off,
-contributions require agreement to the **[Contributor License Agreement](CLA.md)**.
-
-You agree to the CLA by:
-
-1. signing off your commits (`-s`, the DCO), **and**
-2. confirming acceptance of [`CLA.md`](CLA.md) on your first contribution — via the CLA-assistant
-   bot if configured on the repo, or by stating in the PR: *"I have read and agree to the DUTler
-   CLA."*
-
-If you're contributing on behalf of an employer, make sure you're authorised to agree (an entity
-CLA may be needed). Questions: contact Northern.tech (<https://northern.tech>).
+Questions: contact Northern.tech (<https://northern.tech>).

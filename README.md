@@ -1,14 +1,18 @@
 # DUTler 🎩
 
 [![CI](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml/badge.svg)](https://github.com/TheYoctoJester/dutler/actions/workflows/ci.yml)
-[![License: GPL-3.0-or-later OR Commercial](https://img.shields.io/badge/license-GPL--3.0--or--later%20OR%20Commercial-blue.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Platform: RP2040 / RP2350](https://img.shields.io/badge/platform-RP2040%20%2F%20RP2350-8a2be2.svg)](https://www.raspberrypi.com/products/raspberry-pi-pico/)
 [![Status: alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome%20(CLA)-brightgreen.svg)](CONTRIBUTING.md)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome%20(DCO)-brightgreen.svg)](CONTRIBUTING.md)
 
 > **A bench butler for your Device Under Test.**
 > Sponsored by [Northern.tech](https://northern.tech) as part of the
 > [Mender.io](https://mender.io) community engagement.
+
+> ⚠️ **Experimental.** DUTler is provided **"AS IS", without warranties or conditions of any
+> kind, and without any support**. It's an experiment, not a supported product — don't rely on
+> it for anything critical.
 
 DUTler is open-source firmware that turns a ~$4 **Raspberry Pi Pico (RP2040)** into a small,
 always-there sidecar for **OS-level integration work** — building, flashing, updating, and
@@ -273,10 +277,8 @@ interrupt handler** (it touches the USB TX FIFO shared with the main loop).
 
 ## Contributing
 
-Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Because DUTler is
-dual-licensed, contributions require a DCO sign-off (`git commit -s`) **and** agreement to the
-[Contributor License Agreement](CLA.md), which lets Northern.tech offer your contribution under
-both the GPL and the commercial license. Please follow the
+Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md). Contributions are accepted
+under a DCO sign-off (`git commit -s`) — no CLA. Please follow the
 [Code of Conduct](CODE_OF_CONDUCT.md), and report security issues privately per
 [`SECURITY.md`](SECURITY.md).
 
@@ -284,19 +286,17 @@ both the GPL and the commercial license. Please follow the
 
 Copyright © 2026 Northern.tech AS.
 
-The firmware is **dual-licensed** — use it under *either*:
+The firmware is licensed under the **Apache License, Version 2.0** — see [`LICENSE`](LICENSE) for
+the full text and [`NOTICE`](NOTICE) for attribution. Every source file carries the
+[SPDX](https://spdx.dev) identifier `Apache-2.0`.
 
-- **GPL-3.0-or-later** (open source) — see [`LICENSE`](LICENSE); derivatives stay GPL; **or**
-- a **commercial / proprietary license** from **Northern.tech AS**, for use without the GPL's
-  copyleft obligations — see [`COMMERCIAL.md`](COMMERCIAL.md).
+The software is distributed on an **"AS IS" basis, without warranties or conditions of any kind,
+and without support**.
 
-Every source file carries the [SPDX](https://spdx.dev) identifier
-`Apache-2.0`. Northern.tech AS holds copyright on all
-files, which is what makes both options possible; to keep that so, contributions must be
-assignable/relicensable to Northern.tech (see [`COMMERCIAL.md`](COMMERCIAL.md)).
-
-- **Hardware** (future `hardware/`): intended to be **CERN-OHL-P-2.0** — see `hardware/README.md`.
-- **Documentation** may be offered under **CC-BY-4.0**.
+- **Hardware** design files in [`hardware/`](hardware/) are licensed under **CERN-OHL-P-2.0** (the
+  permissive CERN Open Hardware Licence) — see [`hardware/LICENSE`](hardware/LICENSE) and
+  `hardware/README.md`.
+- **Documentation** is offered under **CC-BY-4.0**.
 
 Third-party components keep their own licenses and are *not* relicensed (Pico SDK, TinyUSB,
 newlib, libgcc, …) — see [`THIRD_PARTY.md`](THIRD_PARTY.md).
