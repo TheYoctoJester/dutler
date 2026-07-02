@@ -55,7 +55,7 @@ static void cmd_help(char **sp);
 static const command_t commands[] = {
     {"out",           cmd_out,           "out <id> on|off|toggle  id=number or name"},
     {"name",          cmd_name,          "name <n> <alias|clear>  label output n"},
-    {"set",           cmd_set,           "set baud <n> | set format <8N1>"},
+    {"set",           cmd_set,           "set baud <n> | set format <8N1> | set echo on|off"},
     {"save",          cmd_save,          "save  persist names + bridge defaults"},
     {"selftest",      cmd_selftest,      "selftest  GP0<->GP1 loopback check"},
     {"factory-reset", cmd_factory_reset, "factory-reset confirm  erase saved settings"},
@@ -158,7 +158,7 @@ static void cmd_set(char **sp) {
     char *what = strtok_r(NULL, " \t", sp);
     char *val = strtok_r(NULL, " \t", sp);
     if (!what || !val) {
-        console_print("error: usage 'set baud <n>' | 'set format <8N1>'\r\n");
+        console_print("error: usage 'set baud <n>' | 'set format <8N1>' | 'set echo on|off'\r\n");
         return;
     }
     if (strcmp(what, "baud") == 0) {
@@ -203,8 +203,21 @@ static void cmd_set(char **sp) {
         g_settings.stop_bits = (uint8_t)s;
         dirty = true;
         console_print("ok (effective after 'save' + reboot)\r\n");
+    } else if (strcmp(what, "echo") == 0) {
+        // Control-port local echo. Unlike baud/format this takes effect at once
+        // (console_task reads it live); 'save' just makes it stick across reboots.
+        if (strcmp(val, "on") == 0)
+            g_settings.echo = 1;
+        else if (strcmp(val, "off") == 0)
+            g_settings.echo = 0;
+        else {
+            console_print("error: echo must be 'on' or 'off'\r\n");
+            return;
+        }
+        dirty = true;
+        console_print("ok\r\n");
     } else {
-        console_print("error: set what? (baud|format)\r\n");
+        console_print("error: set what? (baud|format|echo)\r\n");
     }
 }
 
@@ -234,6 +247,7 @@ static void cmd_status(char **sp) {
              (unsigned long)g_settings.baud, g_settings.data_bits,
              parity_to_char(g_settings.parity), g_settings.stop_bits);
     console_print(msg);
+    console_print(g_settings.echo ? "echo on\r\n" : "echo off\r\n");
     console_print("firmware DUTler " DUTLER_VERSION "\r\n");
     if (g_boot_by_watchdog) console_print("note: last reset was a watchdog timeout\r\n");
     if (dirty) console_print("(unsaved changes - use 'save')\r\n");

@@ -212,14 +212,17 @@ always-current command list, so this README doesn't try to mirror it. In brief:
 
 - **`out <id> on|off|toggle`** drives an output by number (`1..`) or configured name, with an
   `<id> on|off|toggle` shorthand (e.g. `pump on`); **`name <n> <alias|clear>`** labels one.
-- **`set baud <n>`** / **`set format <8N1>`** set the bridge UART defaults; **`save`** persists
-  names + bridge defaults to flash; **`status`** shows current state (and unsaved changes).
+- **`set baud <n>`** / **`set format <8N1>`** set the bridge UART defaults; **`set echo on|off`**
+  toggles local echo on the control port (off by default; effective immediately, handy for raw
+  terminals that don't echo locally). **`save`** persists names + bridge defaults + echo to flash;
+  **`status`** shows current state (and unsaved changes).
 - **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**, **`version`**, and
   **`bootsel`** (reboot into the USB bootloader) round it out.
 
 ## Persistent settings
 
-Output **names** and the **bridge boot UART config** are stored in flash. `set …`/`name …`
+Output **names**, the **bridge boot UART config**, and the **control-port echo** flag are stored
+in flash. `set …`/`name …`
 change them in RAM (shown as "unsaved changes" in `status`); `save` writes them. They survive
 power cycles *and* normal firmware reflashes (the UF2 only overwrites the program region, not
 the settings sectors).

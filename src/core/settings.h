@@ -22,10 +22,12 @@ typedef struct {
     uint8_t parity;                          // 0 = none, 1 = odd, 2 = even
     uint8_t stop_bits;                       // 1 or 2
     char out_name[OUT_COUNT][OUT_NAME_MAX];  // "" = unnamed
-    uint8_t reserved;                        // explicit trailing pad: keeps the layout free of any
-                                             // implicit padding (enforced by static asserts in
-                                             // settings.c). Was the compiler's pad byte before;
-                                             // same offset, so stored records stay compatible.
+    uint8_t echo;                            // control-port local echo: 0 = off, 1 = on. Lives in
+                                             // the byte that was explicit trailing pad (still keeps
+                                             // the layout free of implicit padding — see the static
+                                             // asserts in settings_codec.c). Same offset/size as the
+                                             // old pad byte, so stored records stay compatible and
+                                             // read back echo = 0 (off), matching prior behaviour.
 } settings_t;
 
 extern settings_t g_settings;

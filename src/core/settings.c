@@ -65,7 +65,7 @@ static void load_defaults(void) {
     g_settings.data_bits = 8;
     g_settings.parity = 0;
     g_settings.stop_bits = 1;
-    // out_name[] left as empty strings
+    // out_name[] left as empty strings; echo left off (0) by the memset above
 }
 
 void settings_load(void) {

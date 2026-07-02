@@ -140,6 +140,38 @@ static void test_set_baud_format_and_dirty(void) {
     ASSERT_SAID("data bits");
 }
 
+static void test_set_echo(void) {
+    // Off by default, and reported by status.
+    run("status");
+    ASSERT_SAID("echo off");
+
+    fake_console_clear();
+    run("set echo on");
+    ASSERT_SAID("ok");
+    TEST_ASSERT_EQUAL_UINT8(1, g_settings.echo);
+
+    fake_console_clear();
+    run("status");
+    ASSERT_SAID("echo on");
+
+    // Persisted across save + reload (rides in the old reserved byte).
+    run("save");
+    memset(&g_settings, 0, sizeof(g_settings));
+    settings_load();
+    TEST_ASSERT_EQUAL_UINT8(1, g_settings.echo);
+
+    // Validation + turn-off.
+    fake_console_clear();
+    run("set echo maybe");
+    ASSERT_SAID("must be 'on' or 'off'");
+    TEST_ASSERT_EQUAL_UINT8(1, g_settings.echo);  // unchanged on bad value
+
+    fake_console_clear();
+    run("set echo off");
+    ASSERT_SAID("ok");
+    TEST_ASSERT_EQUAL_UINT8(0, g_settings.echo);
+}
+
 static void test_factory_reset(void) {
     run("set baud 9600");
     run("name 1 pump");
@@ -199,6 +231,7 @@ int main(void) {
     RUN_TEST(test_name_and_name_shorthand);
     RUN_TEST(test_name_validation);
     RUN_TEST(test_set_baud_format_and_dirty);
+    RUN_TEST(test_set_echo);
     RUN_TEST(test_factory_reset);
     RUN_TEST(test_selftest_reflects_bridge);
     RUN_TEST(test_bootsel_requests_reboot);
