@@ -121,7 +121,7 @@ jobs:
           sudo apt-get install -y cmake ninja-build libusb-1.0-0-dev
 
       - name: Install Arm GNU toolchain (14.2.Rel1)
-        uses: carlosperate/arm-none-eabi-gcc-action@0725d97b026acf7fc8e22dfd5bee912998879ba8 # v1
+        uses: carlosperate/arm-none-eabi-gcc-action@98c40e51546516419841748d3210c290df0d2c6c # v1
         with:
           release: "14.2.Rel1"
 
