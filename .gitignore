@@ -7,6 +7,8 @@ build*/
 # KiCad — keep design source (.kicad_pro/.kicad_sch/.kicad_pcb), ignore the rest
 # per-user local settings (window state, etc.)
 *.kicad_prl
+# editor lock files (present while a project is open)
+*.lck
 # KiCad auto-backup snapshots
 *-backups/
 # KiCad local-history plugin (a nested git repo)
