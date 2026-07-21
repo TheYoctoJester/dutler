@@ -5,6 +5,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "config.h"
 #include "core/command.h"
@@ -22,7 +23,26 @@ static uint8_t line_len = 0;
 static lineedit_t g_editor;
 static bool editor_ready = false;
 
+// True only while a command reply is being printed in shell mode: gates ANSI
+// colour so the editor's own echo/redraw (which also goes through console_print)
+// is never colourised.
+static bool colorize_reply = false;
+
 void console_print(const char *s) {
+    // In shell mode, tint command replies: errors red, ok green. Heuristic on the
+    // line prefix, so command handlers stay colour-agnostic.
+    if (colorize_reply && g_settings.shell) {
+        const char *color = NULL;
+        if (strncmp(s, "error", 5) == 0) color = "\x1b[31m";       // red
+        else if (strncmp(s, "ok", 2) == 0) color = "\x1b[32m";     // green
+        if (color) {
+            tud_cdc_n_write_str(CDC_ITF_OUT, color);
+            tud_cdc_n_write_str(CDC_ITF_OUT, s);
+            tud_cdc_n_write_str(CDC_ITF_OUT, "\x1b[0m");
+            tud_cdc_n_write_flush(CDC_ITF_OUT);
+            return;
+        }
+    }
     tud_cdc_n_write_str(CDC_ITF_OUT, s);
     tud_cdc_n_write_flush(CDC_ITF_OUT);
 }
@@ -61,7 +81,11 @@ static void shell_task(void) {
         if (ch < 0) break;
         char *line;
         if (lineedit_feed(&g_editor, (char)ch, &line)) {
-            if (line[0]) command_dispatch(line);
+            if (line[0]) {
+                colorize_reply = true;
+                command_dispatch(line);
+                colorize_reply = false;
+            }
             lineedit_start(&g_editor);
         }
     }
