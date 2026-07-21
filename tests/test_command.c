@@ -168,6 +168,39 @@ static void test_set_echo(void) {
     TEST_ASSERT_EQUAL_UINT8(0, g_settings.echo);
 }
 
+static void test_set_shell(void) {
+    run("status");
+    fake_console_clear();
+    run("get shell");
+    ASSERT_SAID("shell off");  // off by default
+
+    fake_console_clear();
+    run("set shell on");
+    ASSERT_SAID("ok");
+    TEST_ASSERT_EQUAL_UINT8(1, g_settings.shell);
+
+    fake_console_clear();
+    run("get shell");
+    ASSERT_SAID("shell on");
+
+    // Persisted across save + reload.
+    run("save");
+    memset(&g_settings, 0, sizeof(g_settings));
+    settings_load();
+    TEST_ASSERT_EQUAL_UINT8(1, g_settings.shell);
+
+    // Validation + turn-off.
+    fake_console_clear();
+    run("set shell maybe");
+    ASSERT_SAID("must be 'on' or 'off'");
+    TEST_ASSERT_EQUAL_UINT8(1, g_settings.shell);  // unchanged on bad value
+
+    fake_console_clear();
+    run("set shell off");
+    ASSERT_SAID("ok");
+    TEST_ASSERT_EQUAL_UINT8(0, g_settings.shell);
+}
+
 static void test_factory_reset(void) {
     run("set baud 9600");
     run("set outname 1 pump");
@@ -283,6 +316,7 @@ static void test_get_all(void) {
     ASSERT_SAID("baud 115200");
     ASSERT_SAID("format 8N1");
     ASSERT_SAID("echo off");
+    ASSERT_SAID("shell off");
     ASSERT_SAID("dutname");
     ASSERT_SAID("outname 1");
     ASSERT_SAID("outname 2 relay");
@@ -317,6 +351,7 @@ int main(void) {
     RUN_TEST(test_outname_validation);
     RUN_TEST(test_set_baud_format_and_dirty);
     RUN_TEST(test_set_echo);
+    RUN_TEST(test_set_shell);
     RUN_TEST(test_factory_reset);
     RUN_TEST(test_selftest_reflects_bridge);
     RUN_TEST(test_bootsel_and_reset);
