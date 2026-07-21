@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "fakes.h"
+#include "hardware/watchdog.h"
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
@@ -35,6 +36,17 @@ void reset_usb_boot(uint32_t usb_activity_gpio_pin_mask, uint32_t disable_interf
 }
 bool fake_bootsel_requested(void) { return bootsel_requested; }
 void fake_bootsel_clear(void) { bootsel_requested = false; }
+
+// --- watchdog : record a warm-reboot request instead of rebooting ---
+static int reboot_count;
+void watchdog_reboot(uint32_t pc, uint32_t sp, uint32_t delay_ms) {
+    (void)pc;
+    (void)sp;
+    (void)delay_ms;
+    reboot_count++;
+}
+int fake_reboot_count(void) { return reboot_count; }
+void fake_reboot_clear(void) { reboot_count = 0; }
 
 // --- TinyUSB / time : make the bootsel countdown fall through immediately ---
 void tud_task(void) {}

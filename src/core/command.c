@@ -11,6 +11,7 @@
 #include "config.h"
 #include "core/outputs.h"
 #include "core/settings.h"
+#include "hardware/watchdog.h"
 #include "pico/bootrom.h"
 #include "pico/time.h"
 #include "platform/bridge.h"
@@ -50,6 +51,7 @@ static void cmd_factory_reset(char **sp);
 static void cmd_status(char **sp);
 static void cmd_version(char **sp);
 static void cmd_bootsel(char **sp);
+static void cmd_reset(char **sp);
 static void cmd_help(char **sp);
 
 // clang-format off
@@ -63,7 +65,7 @@ static const command_t commands[] = {
     {"status",        cmd_status,        "status  list outputs + bridge defaults"},
     {"version",       cmd_version,       "version  print firmware version"},
     {"bootsel",       cmd_bootsel,       "bootsel  reboot into USB bootloader"},
-    {"reset",         cmd_bootsel,       NULL},  // hidden alias for bootsel
+    {"reset",         cmd_reset,         "reset  reboot the board (into the application)"},
     {"help",          cmd_help,          "help  show this text"},
 };
 // clang-format on
@@ -381,6 +383,18 @@ static void cmd_bootsel(char **sp) {
     absolute_time_t deadline = make_timeout_time_ms(50);
     while (!time_reached(deadline)) tud_task();
     reset_usb_boot(0, 0);  // does not return
+}
+
+static void cmd_reset(char **sp) {
+    (void)sp;
+    // A plain warm reboot into the application (unlike 'bootsel'), handy to clear
+    // an occasional UART/USB lockup. watchdog_reboot() (rather than watchdog_enable)
+    // means main.c does NOT flag the next boot as a watchdog timeout.
+    console_print("rebooting\r\n");
+    absolute_time_t deadline = make_timeout_time_ms(50);
+    while (!time_reached(deadline)) tud_task();  // flush the reply first
+    watchdog_reboot(0, 0, 0);                     // fire ASAP; does not return on device
+    while (!time_reached(make_timeout_time_ms(1000))) tud_task();  // wait for the reset
 }
 
 static void cmd_help(char **sp) {
