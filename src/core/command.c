@@ -49,7 +49,6 @@ static void cmd_save(char **sp);
 static void cmd_selftest(char **sp);
 static void cmd_factory_reset(char **sp);
 static void cmd_status(char **sp);
-static void cmd_version(char **sp);
 static void cmd_bootsel(char **sp);
 static void cmd_reset(char **sp);
 static void cmd_help(char **sp);
@@ -58,12 +57,11 @@ static void cmd_help(char **sp);
 static const command_t commands[] = {
     {"out",           cmd_out,           "out <id> on|off|toggle  id=number or name"},
     {"set",           cmd_set,           "set <key> <value>  keys: baud|format|echo|dutname|outname <n>"},
-    {"get",           cmd_get,           "get [<key>]  read setting(s): baud|format|echo|dutname|outname <n>|serial"},
+    {"get",           cmd_get,           "get [<key>]  read setting(s): baud|format|echo|dutname|outname <n>|serial|version"},
     {"save",          cmd_save,          "save  persist settings to flash"},
     {"selftest",      cmd_selftest,      "selftest  GP0<->GP1 loopback check"},
     {"factory-reset", cmd_factory_reset, "factory-reset confirm  erase saved settings"},
     {"status",        cmd_status,        "status  list outputs + bridge defaults"},
-    {"version",       cmd_version,       "version  print firmware version"},
     {"bootsel",       cmd_bootsel,       "bootsel  reboot into USB bootloader"},
     {"reset",         cmd_reset,         "reset  reboot the board (into the application)"},
     {"help",          cmd_help,          "help  show this text"},
@@ -138,6 +136,8 @@ static bool get_scalar(const char *key) {
         snprintf(msg, sizeof(msg), "dutname %s\r\n", g_settings.device_name);
     } else if (strcmp(key, "serial") == 0) {
         snprintf(msg, sizeof(msg), "serial %s\r\n", usb_get_serial());
+    } else if (strcmp(key, "version") == 0) {
+        snprintf(msg, sizeof(msg), "version %s\r\n", DUTLER_VERSION);
     } else {
         return false;
     }
@@ -160,6 +160,7 @@ static void cmd_get(char **sp) {
         get_scalar("dutname");
         for (uint8_t i = 0; i < OUT_COUNT; i++) get_outname(i);
         get_scalar("serial");
+        get_scalar("version");
         return;
     }
     if (strcmp(key, "outname") == 0) {  // indexed: 'get outname' (all) or 'get outname <n>'
@@ -177,7 +178,7 @@ static void cmd_get(char **sp) {
         return;
     }
     if (!get_scalar(key))
-        console_print("error: unknown key (baud|format|echo|dutname|outname|serial)\r\n");
+        console_print("error: unknown key (baud|format|echo|dutname|outname|serial|version)\r\n");
 }
 
 static void cmd_set(char **sp) {
@@ -312,8 +313,8 @@ static void cmd_set(char **sp) {
         dirty = true;
         console_print("ok (run 'save' to persist); re-enumerating USB...\r\n");
         usb_reenumerate();  // drops open handles on this device; by-id path updates
-    } else if (strcmp(what, "serial") == 0) {
-        console_print("error: 'serial' is read-only (use 'get serial')\r\n");
+    } else if (strcmp(what, "serial") == 0 || strcmp(what, "version") == 0) {
+        console_print("error: read-only property (use 'get')\r\n");
     } else {
         console_print("error: unknown key (baud|format|echo|dutname|outname)\r\n");
     }
@@ -349,11 +350,6 @@ static void cmd_status(char **sp) {
     console_print("firmware DUTler " DUTLER_VERSION "\r\n");
     if (g_boot_by_watchdog) console_print("note: last reset was a watchdog timeout\r\n");
     if (dirty) console_print("(unsaved changes - use 'save')\r\n");
-}
-
-static void cmd_version(char **sp) {
-    (void)sp;
-    console_print("DUTler " DUTLER_VERSION "\r\n");
 }
 
 static void cmd_selftest(char **sp) {
