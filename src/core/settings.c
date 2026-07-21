@@ -57,6 +57,7 @@ static uint32_t g_seq;
 // "%s" must never over-read past a name field. Call after any load.
 static void terminate_names(void) {
     for (int i = 0; i < OUT_COUNT; i++) g_settings.out_name[i][OUT_NAME_MAX - 1] = '\0';
+    g_settings.device_name[DEVICE_NAME_MAX - 1] = '\0';
 }
 
 static void load_defaults(void) {
@@ -97,7 +98,34 @@ void settings_load(void) {
         return;
     }
 
-    // No valid v2 record: upgrade a legacy v1 record in place if present.
+    // No current (v3) record: upgrade the newest older v2 record (also A/B with
+    // seq) in place, adding an empty device_name, then re-save as v3.
+    {
+        bool have_v2 = false;
+        uint32_t best_v2 = 0;
+        uint8_t from = 1;
+        if (settings_codec_decode_v2(a, &cand, &seq)) {
+            g_settings = cand;
+            best_v2 = seq;
+            from = 0;
+            have_v2 = true;
+        }
+        if (settings_codec_decode_v2(b, &cand, &seq) && (!have_v2 || seq > best_v2)) {
+            g_settings = cand;
+            best_v2 = seq;
+            from = 1;
+            have_v2 = true;
+        }
+        if (have_v2) {
+            terminate_names();
+            g_seq = best_v2;
+            active_slot = from;  // save() writes the other slot with seq best_v2+1
+            settings_save();     // persist as v3 (best-effort; retried next boot)
+            return;
+        }
+    }
+
+    // No v2/v3 record: upgrade a legacy v1 record in place if present.
     if (settings_codec_decode_v1(flash_port_read(LEGACY_OFFSET), &cand)) {
         g_settings = cand;
         terminate_names();

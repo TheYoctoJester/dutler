@@ -9,6 +9,7 @@
 #include "pico/bootrom.h"
 #include "pico/stdlib.h"
 #include "pico/time.h"
+#include "platform/usb_descriptors.h"
 #include "tusb.h"
 
 // Normally defined in main.c (true after a watchdog reset); status reads it.
@@ -45,3 +46,11 @@ bool time_reached(absolute_time_t t) {
     (void)t;
     return true;
 }
+
+// --- usb_descriptors seam (command.c: `serial`, `set name`) ---
+const char *usb_get_serial(void) { return "TESTSERIAL000001"; }
+
+static int reenumerate_count;
+void usb_reenumerate(void) { reenumerate_count++; }
+int fake_reenumerate_count(void) { return reenumerate_count; }
+void fake_reenumerate_clear(void) { reenumerate_count = 0; }

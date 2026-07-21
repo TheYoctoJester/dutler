@@ -215,15 +215,21 @@ always-current command list, so this README doesn't try to mirror it. In brief:
   `<id> on|off|toggle` shorthand (e.g. `pump on`); **`name <n> <alias|clear>`** labels one.
 - **`set baud <n>`** / **`set format <8N1>`** set the bridge UART defaults; **`set echo on|off`**
   toggles local echo on the control port (off by default; effective immediately, handy for raw
-  terminals that don't echo locally). **`save`** persists names + bridge defaults + echo to flash;
-  **`status`** shows current state (and unsaved changes).
+  terminals that don't echo locally). **`save`** persists names + bridge defaults + echo + device
+  name to flash; **`status`** shows current state (and unsaved changes).
+- **`serial`** prints the Pico's hardware unique ID (the same value used as the USB `iSerial`);
+  **`set name <str>`** / **`set name clear`** sets or clears a human/DUT-oriented label
+  (`[A-Za-z0-9._-]`, ≤ 24 chars). The name goes into the USB product string, so the
+  `/dev/serial/by-id/` path becomes `usb-theyoctojester_DUTler-<name>_<serial>-if0N` — useful for
+  telling several DUTlers apart on one host. It is applied immediately by a live USB
+  re-enumeration (open handles on that DUTler drop and must be reopened) and persisted by `save`.
 - **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**, **`version`**, and
   **`bootsel`** (reboot into the USB bootloader) round it out.
 
 ## Persistent settings
 
-Output **names**, the **bridge boot UART config**, and the **control-port echo** flag are stored
-in flash. `set …`/`name …`
+Output **names**, the **bridge boot UART config**, the **control-port echo** flag, and the
+**device name** are stored in flash. `set …`/`name …`
 change them in RAM (shown as "unsaved changes" in `status`); `save` writes them. They survive
 power cycles *and* normal firmware reflashes (the UF2 only overwrites the program region, not
 the settings sectors).
@@ -234,8 +240,8 @@ it counts, and load picks the valid slot with the highest sequence. The active s
 erased, so a **failed or power-interrupted save cannot lose the last good config** — load just
 falls back to the older slot (the half-written one fails its CRC). A blank/garbage pair falls
 back to safe defaults. The record is **versioned**; `src/core/settings.c` documents the append-only
-evolution rules and migrates the older format in place (v1 single-slot records are upgraded to
-v2 A/B on first boot, preserving names + baud).
+evolution rules and migrates older formats in place on first boot (single-slot v1 records are
+upgraded to A/B, and pre-device-name v2 records to v3, preserving the existing settings).
 
 **Outputs themselves always boot OFF** — their state is deliberately not persisted, so a power
 blip can never silently re-energize a load. Implemented in `src/core/settings.c`

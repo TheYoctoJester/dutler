@@ -23,14 +23,33 @@ static uint32_t slot_b(void) { return flash_port_size() - 1u * FLASH_PORT_SECTOR
 void setUp(void) { flash_fake_reset(); }
 void tearDown(void) {}
 
+// Frozen size of the gen-1 payload (v1 and v2 records) — no device_name. The
+// live settings_t is larger now, so records must be built with this size, and
+// the first V1_PAYLOAD bytes of a settings_t are exactly that layout.
+#define V1_PAYLOAD (4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u)
+
 // Plant a valid legacy v1 record (magic, version=1, payload, crc) at `off`.
 static void plant_v1(uint32_t off, const settings_t *s) {
-    uint8_t rec[SC_OFF_PAYLOAD_V1 + sizeof(settings_t) + 4];
+    uint8_t rec[SC_OFF_PAYLOAD_V1 + V1_PAYLOAD + 4];
     uint32_t magic = SETTINGS_MAGIC, ver = 1u;
     memcpy(rec + SC_OFF_MAGIC, &magic, sizeof(magic));
     memcpy(rec + SC_OFF_VERSION, &ver, sizeof(ver));
-    memcpy(rec + SC_OFF_PAYLOAD_V1, s, sizeof(*s));
-    size_t crc_off = SC_OFF_PAYLOAD_V1 + sizeof(*s);
+    memcpy(rec + SC_OFF_PAYLOAD_V1, s, V1_PAYLOAD);
+    size_t crc_off = SC_OFF_PAYLOAD_V1 + V1_PAYLOAD;
+    uint32_t crc = dutler_crc32(rec, crc_off);
+    memcpy(rec + crc_off, &crc, sizeof(crc));
+    flash_fake_poke(off, rec, (uint32_t)sizeof(rec));
+}
+
+// Plant a valid older v2 record (magic, version=2, seq, gen-1 payload, crc).
+static void plant_v2(uint32_t off, const settings_t *s, uint32_t seq) {
+    uint8_t rec[SC_OFF_PAYLOAD_V2 + V1_PAYLOAD + 4];
+    uint32_t magic = SETTINGS_MAGIC, ver = 2u;
+    memcpy(rec + SC_OFF_MAGIC, &magic, sizeof(magic));
+    memcpy(rec + SC_OFF_VERSION, &ver, sizeof(ver));
+    memcpy(rec + SC_OFF_SEQ, &seq, sizeof(seq));
+    memcpy(rec + SC_OFF_PAYLOAD_V2, s, V1_PAYLOAD);
+    size_t crc_off = SC_OFF_PAYLOAD_V2 + V1_PAYLOAD;
     uint32_t crc = dutler_crc32(rec, crc_off);
     memcpy(rec + crc_off, &crc, sizeof(crc));
     flash_fake_poke(off, rec, (uint32_t)sizeof(rec));
@@ -175,6 +194,43 @@ static void test_slots_track_4mb_flash(void) {
     TEST_ASSERT_EQUAL_UINT32(921600, g_settings.baud);  // newest wins at 4 MB
 }
 
+// An older v2 record (A/B, no device_name) is migrated to v3 with device_name
+// cleared, and re-saved as a current record with the next sequence number.
+static void test_v2_migration(void) {
+    settings_t v2;
+    memset(&v2, 0, sizeof(v2));
+    v2.baud = 19200;
+    v2.data_bits = 8;
+    v2.stop_bits = 1;
+    v2.echo = 1;
+    strcpy(v2.out_name[2], "relay");
+    plant_v2(slot_a(), &v2, 5);  // only the first V1_PAYLOAD bytes are stored
+
+    settings_load();  // no v3 record -> migrate the v2 record
+    TEST_ASSERT_EQUAL_UINT32(19200, g_settings.baud);
+    TEST_ASSERT_EQUAL_UINT8(1, g_settings.echo);
+    TEST_ASSERT_EQUAL_STRING("relay", g_settings.out_name[2]);
+    TEST_ASSERT_EQUAL_STRING("", g_settings.device_name);  // absent in v2 -> cleared
+
+    // Re-saved as a current (v3) record in the other slot, seq bumped past 5.
+    settings_t v3;
+    uint32_t seq;
+    TEST_ASSERT_TRUE(settings_codec_decode(flash_port_read(slot_b()), &v3, &seq));
+    TEST_ASSERT_EQUAL_UINT32(19200, v3.baud);
+    TEST_ASSERT_EQUAL_UINT32(6, seq);
+}
+
+// A device name persists through a v3 save/load round-trip.
+static void test_device_name_roundtrip(void) {
+    settings_load();
+    strcpy(g_settings.device_name, "arrakeen-rpi5");
+    TEST_ASSERT_TRUE(settings_save());
+
+    memset(&g_settings, 0, sizeof(g_settings));
+    settings_load();
+    TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
+}
+
 static void test_factory_reset(void) {
     settings_load();
     g_settings.baud = 9600;
@@ -198,6 +254,8 @@ int main(void) {
     RUN_TEST(test_crc_fallback);
     RUN_TEST(test_power_loss_safe);
     RUN_TEST(test_v1_migration);
+    RUN_TEST(test_v2_migration);
+    RUN_TEST(test_device_name_roundtrip);
     RUN_TEST(test_slots_track_4mb_flash);
     RUN_TEST(test_factory_reset);
     return UNITY_END();
