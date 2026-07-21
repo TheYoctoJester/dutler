@@ -212,24 +212,28 @@ Open the **Control** port (CDC1) and type `help` — the firmware prints the aut
 always-current command list, so this README doesn't try to mirror it. In brief:
 
 - **`out <id> on|off|toggle`** drives an output by number (`1..`) or configured name, with an
-  `<id> on|off|toggle` shorthand (e.g. `pump on`); **`name <n> <alias|clear>`** labels one.
-- **`set baud <n>`** / **`set format <8N1>`** set the bridge UART defaults; **`set echo on|off`**
-  toggles local echo on the control port (off by default; effective immediately, handy for raw
-  terminals that don't echo locally). **`save`** persists names + bridge defaults + echo + device
-  name to flash; **`status`** shows current state (and unsaved changes).
-- **`serial`** prints the Pico's hardware unique ID (the same value used as the USB `iSerial`);
-  **`set name <str>`** / **`set name clear`** sets or clears a human/DUT-oriented label
-  (`[A-Za-z0-9._-]`, ≤ 24 chars). The name goes into the USB product string, so the
-  `/dev/serial/by-id/` path becomes `usb-theyoctojester_DUTler-<name>_<serial>-if0N` — useful for
-  telling several DUTlers apart on one host. It is applied immediately by a live USB
-  re-enumeration (open handles on that DUTler drop and must be reopened) and persisted by `save`.
+  `<id> on|off|toggle` shorthand (e.g. `pump on`).
+- Settings and device properties are a small **key/value store**: **`set <key> <value>`** writes and
+  **`get [<key>]`** reads (with no key, `get` dumps everything). The keys are:
+  - **`baud`** / **`format`** (e.g. `8N1`) — bridge UART defaults (effective after `save` + reboot).
+  - **`echo`** (`on|off`) — control-port local echo (off by default; effective immediately, handy
+    for raw terminals that don't echo locally).
+  - **`outname <n>`** (`<alias|clear>`) — label output `n` (usable as the shorthand verb above).
+  - **`dutname`** (`<str|clear>`) — a human/DUT-oriented label (`[A-Za-z0-9._-]`, ≤ 24 chars). It
+    goes into the USB product string, so the `/dev/serial/by-id/` path becomes
+    `usb-theyoctojester_DUTler-<name>_<serial>-if0N` — handy for telling several DUTlers apart on
+    one host. Applied immediately via a live USB re-enumeration (open handles on that DUTler drop
+    and must be reopened); persisted by `save`.
+  - **`serial`** — read-only device property; `get serial` prints the Pico's hardware unique ID
+    (the same value used as the USB `iSerial`). `set serial` is rejected.
+- **`save`** persists the settings to flash; **`status`** shows the outputs plus a quick summary.
 - **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**, **`version`**, and
   **`bootsel`** (reboot into the USB bootloader) round it out.
 
 ## Persistent settings
 
 Output **names**, the **bridge boot UART config**, the **control-port echo** flag, and the
-**device name** are stored in flash. `set …`/`name …`
+**device name** are stored in flash. `set …` commands
 change them in RAM (shown as "unsaved changes" in `status`); `save` writes them. They survive
 power cycles *and* normal firmware reflashes (the UF2 only overwrites the program region, not
 the settings sectors).

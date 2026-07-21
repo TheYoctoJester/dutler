@@ -73,8 +73,8 @@ static void test_number_shorthand(void) {
     ASSERT_SAID("ok");
 }
 
-static void test_name_and_name_shorthand(void) {
-    run("name 1 pump");
+static void test_outname_and_shorthand(void) {
+    run("set outname 1 pump");
     ASSERT_SAID("ok");
     TEST_ASSERT_EQUAL_STRING("pump", g_settings.out_name[0]);
 
@@ -83,30 +83,30 @@ static void test_name_and_name_shorthand(void) {
     TEST_ASSERT_TRUE(outputs_get(0));
     ASSERT_SAID("ok");
 
-    run("name 1 clear");
+    run("set outname 1 clear");
     TEST_ASSERT_EQUAL_STRING("", g_settings.out_name[0]);
 }
 
-static void test_name_validation(void) {
-    run("name 1 123");
+static void test_outname_validation(void) {
+    run("set outname 1 123");
     ASSERT_SAID("all digits");
     TEST_ASSERT_EQUAL_STRING("", g_settings.out_name[0]);
 
     fake_console_clear();
-    run("name 1 out");  // reserved command word
+    run("set outname 1 out");  // reserved command word
     ASSERT_SAID("command word");
 
     fake_console_clear();
-    run("name 1 selftest");  // every dispatch verb must be reserved, incl. selftest
+    run("set outname 1 selftest");  // every dispatch verb must be reserved, incl. selftest
     ASSERT_SAID("command word");
     TEST_ASSERT_EQUAL_STRING("", g_settings.out_name[0]);
 
     fake_console_clear();
-    run("name 1 abcdefghijklmnopqrst");  // 20 chars, >= OUT_NAME_MAX
+    run("set outname 1 abcdefghijklmnopqrst");  // 20 chars, >= OUT_NAME_MAX
     ASSERT_SAID("too long");
 
     fake_console_clear();
-    run("name 9 x");  // out of range
+    run("set outname 9 x");  // out of range
     ASSERT_SAID("out of range");
 }
 
@@ -174,7 +174,8 @@ static void test_set_echo(void) {
 
 static void test_factory_reset(void) {
     run("set baud 9600");
-    run("name 1 pump");
+    run("set outname 1 pump");
+    run("set dutname bench");  // part of the live USB identity
     run("save");
     fake_console_clear();
 
@@ -183,10 +184,13 @@ static void test_factory_reset(void) {
     TEST_ASSERT_EQUAL_UINT32(9600, g_settings.baud);
 
     fake_console_clear();
+    fake_reenumerate_clear();
     run("factory-reset confirm");
     ASSERT_SAID("factory reset done");
     TEST_ASSERT_EQUAL_UINT32(BRIDGE_INIT_BAUD, g_settings.baud);
     TEST_ASSERT_EQUAL_STRING("", g_settings.out_name[0]);
+    TEST_ASSERT_EQUAL_STRING("", g_settings.device_name);
+    TEST_ASSERT_EQUAL_INT(1, fake_reenumerate_count());  // by-id identity refreshed live
 }
 
 static void test_selftest_reflects_bridge(void) {
@@ -223,53 +227,84 @@ static void test_unknown_and_errors(void) {
     ASSERT_SAID("unknown output command");
 }
 
-static void test_serial(void) {
-    run("serial");
-    ASSERT_SAID("TESTSERIAL000001");
-    fake_console_clear();
-    run("status");
+static void test_get_serial_and_readonly(void) {
+    run("get serial");
     ASSERT_SAID("serial TESTSERIAL000001");
+
+    // serial is a read-only device property; 'set serial' is rejected.
+    fake_console_clear();
+    run("set serial abc");
+    ASSERT_SAID("read-only");
 }
 
-static void test_set_name(void) {
+static void test_set_dutname(void) {
     fake_reenumerate_clear();
-    run("set name arrakeen-rpi5");
+    run("set dutname arrakeen-rpi5");
     ASSERT_SAID("ok");
     TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
     TEST_ASSERT_EQUAL_INT(1, fake_reenumerate_count());  // applied live via re-enumeration
 
     fake_console_clear();
-    run("status");
-    ASSERT_SAID("name arrakeen-rpi5");
+    run("get dutname");
+    ASSERT_SAID("dutname arrakeen-rpi5");
 
     // Illegal charset: rejected, name unchanged, no re-enumeration.
     fake_console_clear();
     fake_reenumerate_clear();
-    run("set name a/b");
+    run("set dutname a/b");
     ASSERT_SAID("error");
     TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
     TEST_ASSERT_EQUAL_INT(0, fake_reenumerate_count());
 
     // Too long (>= DEVICE_NAME_MAX): rejected.
     fake_console_clear();
-    run("set name aaaaaaaaaaaaaaaaaaaaaaaaaaaa");  // 28 chars
+    run("set dutname aaaaaaaaaaaaaaaaaaaaaaaaaaaa");  // 28 chars
     ASSERT_SAID("error");
     TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
 
     // Clear.
-    run("set name clear");
+    run("set dutname clear");
     TEST_ASSERT_EQUAL_STRING("", g_settings.device_name);
+}
+
+static void test_get_all(void) {
+    run("set outname 2 relay");
+    fake_console_clear();
+    run("get");  // no key: dump the whole store
+    ASSERT_SAID("baud 115200");
+    ASSERT_SAID("format 8N1");
+    ASSERT_SAID("echo off");
+    ASSERT_SAID("dutname");
+    ASSERT_SAID("outname 1");
+    ASSERT_SAID("outname 2 relay");
+    ASSERT_SAID("outname 4");
+    ASSERT_SAID("serial TESTSERIAL000001");
+}
+
+static void test_get_single_and_unknown(void) {
+    run("get baud");
+    ASSERT_SAID("baud 115200");
+
+    fake_console_clear();
+    run("get outname 2");
+    ASSERT_SAID("outname 2");
+
+    fake_console_clear();
+    run("get bogus");
+    ASSERT_SAID("unknown key");
 }
 
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_status_and_help_and_version);
-    RUN_TEST(test_serial);
-    RUN_TEST(test_set_name);
+    RUN_TEST(test_get_serial_and_readonly);
+    RUN_TEST(test_set_dutname);
+    RUN_TEST(test_get_all);
+    RUN_TEST(test_get_single_and_unknown);
     RUN_TEST(test_out_on_off_toggle);
     RUN_TEST(test_number_shorthand);
-    RUN_TEST(test_name_and_name_shorthand);
-    RUN_TEST(test_name_validation);
+    RUN_TEST(test_outname_and_shorthand);
+    RUN_TEST(test_outname_validation);
     RUN_TEST(test_set_baud_format_and_dirty);
     RUN_TEST(test_set_echo);
     RUN_TEST(test_factory_reset);
