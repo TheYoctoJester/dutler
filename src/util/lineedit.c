@@ -131,6 +131,95 @@ static void hist_down(lineedit_t *ed) {  // newer
 }
 
 // ---------------------------------------------------------------------------
+//  Kill / yank (single kill buffer)
+// ---------------------------------------------------------------------------
+
+static void kill_set(lineedit_t *ed, const char *src, size_t n) {
+    if (n > KILL_MAX - 1) n = KILL_MAX - 1;
+    memcpy(ed->kill, src, n);
+    ed->kill_len = n;
+    ed->kill[n] = '\0';
+}
+
+// Remove buf[a..b) and fix up the cursor.
+static void delete_range(lineedit_t *ed, size_t a, size_t b) {
+    memmove(&ed->buf[a], &ed->buf[b], ed->len - b);
+    ed->len -= (b - a);
+    ed->buf[ed->len] = '\0';
+    if (ed->pos >= b) ed->pos -= (b - a);
+    else if (ed->pos > a) ed->pos = a;
+}
+
+static void kill_to_start(lineedit_t *ed) {  // Ctrl-U
+    if (ed->pos == 0) return;
+    kill_set(ed, ed->buf, ed->pos);
+    delete_range(ed, 0, ed->pos);
+    refresh(ed);
+}
+
+static void kill_to_end(lineedit_t *ed) {  // Ctrl-K
+    if (ed->pos >= ed->len) return;
+    kill_set(ed, ed->buf + ed->pos, ed->len - ed->pos);
+    delete_range(ed, ed->pos, ed->len);
+    refresh(ed);
+}
+
+static void kill_word(lineedit_t *ed) {  // Ctrl-W
+    size_t i = ed->pos;
+    while (i > 0 && ed->buf[i - 1] == ' ') i--;
+    while (i > 0 && ed->buf[i - 1] != ' ') i--;
+    if (i == ed->pos) return;
+    kill_set(ed, ed->buf + i, ed->pos - i);
+    delete_range(ed, i, ed->pos);
+    refresh(ed);
+}
+
+static void yank(lineedit_t *ed) {  // Ctrl-Y
+    if (ed->kill_len == 0) return;
+    for (size_t i = 0; i < ed->kill_len; i++) insert_char(ed, ed->kill[i]);
+}
+
+// ---------------------------------------------------------------------------
+//  Reverse-incremental history search (Ctrl-R)
+// ---------------------------------------------------------------------------
+
+// Most recent history entry at index >= from (1-based, older = larger) whose text
+// contains the current query as a substring; 0 if none. Empty query matches all.
+static size_t rsearch_find(lineedit_t *ed, size_t from) {
+    for (size_t i = from; i <= ed->hist_count; i++)
+        if (strstr(ed->hist[i - 1], ed->rquery)) return i;
+    return 0;
+}
+
+static void rsearch_refresh(lineedit_t *ed) {
+    ed->write("\r(reverse-i-search)`");
+    ed->write(ed->rquery);
+    ed->write("': ");
+    ed->write(ed->rmatch ? ed->hist[ed->rmatch - 1] : "");
+    ed->write("\x1b[K");
+}
+
+static void rsearch_enter(lineedit_t *ed) {
+    strncpy(ed->stash, ed->buf, CONSOLE_LINE_MAX - 1);  // for restore on cancel
+    ed->stash[CONSOLE_LINE_MAX - 1] = '\0';
+    ed->rsearch = 1;
+    ed->rquery_len = 0;
+    ed->rquery[0] = '\0';
+    ed->rmatch = rsearch_find(ed, 1);
+    rsearch_refresh(ed);
+}
+
+// Leave search mode with `s` as the line, redrawn under the normal prompt.
+static void rsearch_finish(lineedit_t *ed, const char *s) {
+    strncpy(ed->buf, s, CONSOLE_LINE_MAX - 1);
+    ed->buf[CONSOLE_LINE_MAX - 1] = '\0';
+    ed->len = strlen(ed->buf);
+    ed->pos = ed->len;
+    ed->rsearch = 0;
+    refresh(ed);
+}
+
+// ---------------------------------------------------------------------------
 //  Completion (Tab)
 // ---------------------------------------------------------------------------
 
@@ -243,10 +332,75 @@ bool lineedit_feed(lineedit_t *ed, char ch, char **out_line) {
         return false;
     }
 
+    // --- reverse-incremental search sub-mode (Ctrl-R) ---
+    if (ed->rsearch) {
+        if (c == 0x12) {  // Ctrl-R again: next older match
+            size_t m = rsearch_find(ed, ed->rmatch ? ed->rmatch + 1 : 1);
+            if (m) ed->rmatch = m;
+            rsearch_refresh(ed);
+            return false;
+        }
+        if (c == '\r' || c == '\n') {  // accept + execute
+            rsearch_finish(ed, ed->rmatch ? ed->hist[ed->rmatch - 1] : ed->stash);
+            ed->write("\r\n");
+            hist_push(ed, ed->buf);
+            ed->hist_view = 0;
+            *out_line = ed->buf;
+            return true;
+        }
+        if (c == 0x07) {  // Ctrl-G: cancel, restore the pre-search line
+            rsearch_finish(ed, ed->stash);
+            return false;
+        }
+        if (c == 0x03) {  // Ctrl-C: cancel search and abort the line
+            ed->rsearch = 0;
+            ed->write("^C\r\n");
+            ed->buf[0] = '\0';
+            ed->len = 0;
+            ed->pos = 0;
+            ed->hist_view = 0;
+            *out_line = ed->buf;
+            return true;
+        }
+        if (c == 0x08 || c == 0x7f) {  // shorten the query
+            if (ed->rquery_len > 0) ed->rquery[--ed->rquery_len] = '\0';
+            ed->rmatch = rsearch_find(ed, 1);
+            rsearch_refresh(ed);
+            return false;
+        }
+        if (c >= 0x20 && c < 0x7f) {  // extend the query
+            if (ed->rquery_len < sizeof(ed->rquery) - 1) {
+                ed->rquery[ed->rquery_len++] = (char)c;
+                ed->rquery[ed->rquery_len] = '\0';
+            }
+            ed->rmatch = rsearch_find(ed, 1);
+            rsearch_refresh(ed);
+            return false;
+        }
+        // Any other key accepts the match and is then processed normally.
+        rsearch_finish(ed, ed->rmatch ? ed->hist[ed->rmatch - 1] : ed->stash);
+        return lineedit_feed(ed, ch, out_line);
+    }
+
     // --- normal byte ---
     switch (c) {
         case 0x1b:  // ESC — begin a sequence
             ed->esc = 1;
+            return false;
+        case 0x12:  // Ctrl-R — reverse history search
+            rsearch_enter(ed);
+            return false;
+        case 0x15:  // Ctrl-U — kill to start of line
+            kill_to_start(ed);
+            return false;
+        case 0x0b:  // Ctrl-K — kill to end of line
+            kill_to_end(ed);
+            return false;
+        case 0x17:  // Ctrl-W — kill previous word
+            kill_word(ed);
+            return false;
+        case 0x19:  // Ctrl-Y — yank the last kill
+            yank(ed);
             return false;
         case '\r':
         case '\n':  // Enter — finish the line
