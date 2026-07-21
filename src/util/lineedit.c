@@ -10,22 +10,53 @@
 //  Terminal output helpers
 // ---------------------------------------------------------------------------
 
-// Redraw the whole line in place: return to column 0, print prompt + buffer,
-// clear any leftover from a previously longer line, then reposition the cursor.
-// Single-row refresh (assumes prompt+line fits the terminal width — wrap-aware
-// refresh is a later concern). Used for edits that move text; plain appends and
-// cursor moves emit minimal sequences directly.
+// Redraw the line in place, wrap-aware. Handles lines that span several terminal
+// rows: it walks up to the first row of the previous render clearing each, then
+// reprints prompt + buffer and moves the cursor to its position. Adapted from
+// linenoise's refreshMultiLine; oldpos/oldrows carry the previous render's shape.
+// Every edit (insert, delete, cursor move, history recall) goes through here.
 static void refresh(lineedit_t *ed) {
-    ed->write("\r");
-    ed->write(ed->prompt);
-    ed->write(ed->buf);      // NUL-terminated at [len]
-    ed->write("\x1b[K");     // erase to end of line
-    size_t back = ed->len - ed->pos;
-    if (back > 0) {
-        char seq[16];
-        snprintf(seq, sizeof(seq), "\x1b[%uD", (unsigned)back);
+    size_t plen = strlen(ed->prompt);
+    size_t cols = ed->cols ? ed->cols : DEFAULT_TERM_COLS;
+    char seq[24];
+
+    size_t rows = (plen + ed->len + cols - 1) / cols;  // rows the new content needs
+    if (rows == 0) rows = 1;
+    size_t rpos = (plen + ed->oldpos + cols) / cols;  // old cursor's row (1-based)
+    size_t old_rows = ed->oldrows ? ed->oldrows : 1;
+    ed->oldrows = rows;
+
+    // Go to the last row of the old render, then clear each row moving up.
+    if (old_rows > rpos) {
+        snprintf(seq, sizeof(seq), "\x1b[%uB", (unsigned)(old_rows - rpos));
         ed->write(seq);
     }
+    for (size_t j = 0; j + 1 < old_rows; j++) ed->write("\r\x1b[0K\x1b[1A");
+    ed->write("\r\x1b[0K");  // clear the top row
+
+    ed->write(ed->prompt);
+    ed->write(ed->buf);  // NUL-terminated at [len]
+
+    // If the cursor is at the end and exactly fills the last column, the terminal
+    // has not yet scrolled: emit a newline so the cursor lands on a fresh row.
+    if (ed->pos && ed->pos == ed->len && (ed->pos + plen) % cols == 0) {
+        ed->write("\n\r");
+        rows++;
+        if (rows > ed->oldrows) ed->oldrows = rows;
+    }
+
+    // Move the cursor up to its target row, then to its column.
+    size_t rpos2 = (plen + ed->pos + cols) / cols;
+    if (rows > rpos2) {
+        snprintf(seq, sizeof(seq), "\x1b[%uA", (unsigned)(rows - rpos2));
+        ed->write(seq);
+    }
+    size_t col = (plen + ed->pos) % cols;
+    if (col) snprintf(seq, sizeof(seq), "\r\x1b[%uC", (unsigned)col);
+    else snprintf(seq, sizeof(seq), "\r");
+    ed->write(seq);
+
+    ed->oldpos = ed->pos;
 }
 
 // ---------------------------------------------------------------------------
@@ -34,15 +65,6 @@ static void refresh(lineedit_t *ed) {
 
 static void insert_char(lineedit_t *ed, char c) {
     if (ed->len + 1 >= CONSOLE_LINE_MAX) return;  // full (keep room for the NUL)
-    if (ed->pos == ed->len) {
-        // Fast path: appending at the end needs only the one glyph echoed.
-        ed->buf[ed->pos++] = c;
-        ed->len++;
-        ed->buf[ed->len] = '\0';
-        char pair[2] = {c, '\0'};
-        ed->write(pair);
-        return;
-    }
     memmove(&ed->buf[ed->pos + 1], &ed->buf[ed->pos], ed->len - ed->pos);
     ed->buf[ed->pos++] = c;
     ed->len++;
@@ -70,14 +92,14 @@ static void delete_at(lineedit_t *ed) {
 static void move_left(lineedit_t *ed) {
     if (ed->pos > 0) {
         ed->pos--;
-        ed->write("\x1b[D");
+        refresh(ed);  // wrap-aware (a raw ESC[D would not cross row boundaries)
     }
 }
 
 static void move_right(lineedit_t *ed) {
     if (ed->pos < ed->len) {
         ed->pos++;
-        ed->write("\x1b[C");
+        refresh(ed);
     }
 }
 
@@ -285,6 +307,7 @@ void lineedit_init(lineedit_t *ed, lineedit_write_fn write, lineedit_complete_fn
     ed->complete = complete;
     ed->prompt = prompt;
     ed->buf[0] = '\0';
+    ed->cols = DEFAULT_TERM_COLS;  // until an ESC[6n report refines it
 }
 
 void lineedit_start(lineedit_t *ed) {
@@ -293,11 +316,29 @@ void lineedit_start(lineedit_t *ed) {
     ed->buf[0] = '\0';
     ed->hist_view = 0;
     ed->esc = 0;
+    ed->prev_eol = 0;
+    ed->oldpos = 0;
+    ed->oldrows = 1;
+    // Probe the terminal width once per session: park the cursor far right, ask
+    // for its position (reply parsed as ESC[row;colR -> col = width), return to
+    // column 0. Falls back to DEFAULT_TERM_COLS if the terminal never answers.
+    if (!ed->width_queried) {
+        ed->write("\r\x1b[999C\x1b[6n\r");
+        ed->width_queried = 1;
+    }
     ed->write(ed->prompt);
 }
 
 bool lineedit_feed(lineedit_t *ed, char ch, char **out_line) {
     unsigned char c = (unsigned char)ch;
+
+    // Coalesce a CR/LF (or LF/CR) pair into a single Enter, so terminals that send
+    // CRLF don't produce a spurious blank line + extra prompt.
+    if ((c == '\n' && ed->prev_eol == '\r') || (c == '\r' && ed->prev_eol == '\n')) {
+        ed->prev_eol = 0;
+        return false;
+    }
+    ed->prev_eol = (c == '\r' || c == '\n') ? (uint8_t)c : 0;
 
     // --- escape-sequence state machine (arrow / Home / End / Delete keys) ---
     if (ed->esc == 1) {  // saw ESC
@@ -314,6 +355,10 @@ bool lineedit_feed(lineedit_t *ed, char ch, char **out_line) {
             ed->esc_num = ed->esc_num * 10u + (uint32_t)(c - '0');
             return false;
         }
+        if (c == ';') {   // next parameter; we only need the last (column) one
+            ed->esc_num = 0;
+            return false;
+        }
         ed->esc = 0;  // this byte is the final one
         switch (c) {
             case 'A': hist_up(ed); break;
@@ -322,6 +367,9 @@ bool lineedit_feed(lineedit_t *ed, char ch, char **out_line) {
             case 'D': move_left(ed); break;
             case 'H': move_home(ed); break;
             case 'F': move_end(ed); break;
+            case 'R':  // ESC[<row>;<col>R cursor-position report -> col = width
+                if (ed->esc_num >= 20 && ed->esc_num <= 1000) ed->cols = (uint16_t)ed->esc_num;
+                break;
             case '~':
                 if (ed->esc_num == 3) delete_at(ed);
                 else if (ed->esc_num == 1 || ed->esc_num == 7) move_home(ed);

@@ -37,8 +37,14 @@ typedef struct {
     size_t hist_view;                    // 0 = live line; 1..hist_count = browsing
     char stash[CONSOLE_LINE_MAX];                // live line saved while browsing history
 
-    uint8_t esc;       // input escape state: 0 none, 1 saw ESC, 2 in CSI (ESC[)
-    uint32_t esc_num;  // accumulated CSI numeric parameter
+    uint8_t esc;         // input escape state: 0 none, 1 saw ESC, 2 in CSI (ESC[)
+    uint32_t esc_num;    // accumulated CSI numeric parameter
+    uint8_t prev_eol;    // last CR/LF, to coalesce a CRLF pair into one Enter
+
+    uint16_t cols;          // terminal width in cells (DEFAULT_TERM_COLS until learned)
+    uint8_t width_queried;  // 1 once the ESC[6n width probe has been sent
+    size_t oldpos;          // cursor position at the last refresh (multiline redraw)
+    size_t oldrows;         // rows the last render occupied
 
     char kill[KILL_MAX];  // last kill (Ctrl-U/K/W), re-inserted by Ctrl-Y
     size_t kill_len;
