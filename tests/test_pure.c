@@ -112,6 +112,42 @@ static void test_codec_v1(void) {
     TEST_ASSERT_FALSE(settings_codec_decode(rec, &out, &seq));  // v1 is not the current version
 }
 
+static void test_codec_v3(void) {
+    settings_t s;
+    memset(&s, 0, sizeof(s));
+    s.baud = 38400;
+    s.echo = 1;
+    strcpy(s.device_name, "bench");
+    s.shell = 1;  // set in the source struct, but a v3 record cannot carry it
+
+    // A real v3 record carries the frozen gen-2 payload (echo + device_name, no
+    // shell); the first V2_PAYLOAD bytes of a settings_t are exactly that layout.
+    const size_t v2_payload =
+        4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u + DEVICE_NAME_MAX;
+    uint8_t rec[SC_OFF_PAYLOAD_V3 + sizeof(settings_t) + 4];
+    uint32_t magic = SETTINGS_MAGIC, ver = 3u, seq_in = 9u;
+    memcpy(rec + SC_OFF_MAGIC, &magic, sizeof(magic));
+    memcpy(rec + SC_OFF_VERSION, &ver, sizeof(ver));
+    memcpy(rec + SC_OFF_SEQ, &seq_in, sizeof(seq_in));
+    memcpy(rec + SC_OFF_PAYLOAD_V3, &s, v2_payload);
+    size_t crc_off = SC_OFF_PAYLOAD_V3 + v2_payload;
+    uint32_t crc = dutler_crc32(rec, crc_off);
+    memcpy(rec + crc_off, &crc, sizeof(crc));
+
+    settings_t out;
+    uint32_t seq = 0;
+    memset(&out, 0, sizeof(out));
+    TEST_ASSERT_TRUE(settings_codec_decode_v3(rec, &out, &seq));
+    TEST_ASSERT_EQUAL_UINT32(9, seq);
+    TEST_ASSERT_EQUAL_UINT32(38400, out.baud);
+    TEST_ASSERT_EQUAL_STRING("bench", out.device_name);
+    TEST_ASSERT_EQUAL_UINT8(0, out.shell);  // absent in v3 -> cleared
+
+    settings_t o2;
+    uint32_t s2;
+    TEST_ASSERT_FALSE(settings_codec_decode(rec, &o2, &s2));  // v3 is not current
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_crc32);
@@ -119,5 +155,6 @@ int main(void) {
     RUN_TEST(test_codec_roundtrip);
     RUN_TEST(test_codec_rejects);
     RUN_TEST(test_codec_v1);
+    RUN_TEST(test_codec_v3);
     return UNITY_END();
 }

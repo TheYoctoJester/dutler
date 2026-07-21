@@ -37,6 +37,13 @@ typedef struct {
     // Device/DUT label, "" = unset. Appended (v3) after echo. Surfaced in the USB
     // product string; validated (charset/length) by the control port's `set name`.
     char device_name[DEVICE_NAME_MAX];
+    // Control-port interactive shell: 0 = off (default; clean line protocol for
+    // scripts), 1 = on (prompt, in-line editing, history — see lineedit.c). Appended
+    // (v4) after device_name. reserved[3] keeps settings_t a multiple of 4 (no
+    // implicit padding — see the static asserts in settings_codec.c) and leaves
+    // room for future flag bytes without another version bump.
+    uint8_t shell;
+    uint8_t reserved[3];
 } settings_t;
 
 extern settings_t g_settings;
