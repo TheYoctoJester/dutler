@@ -212,6 +212,40 @@ static void test_reverse_search(void) {
     TEST_ASSERT_EQUAL_STRING("draft", feed("draft\x12" "echo\x07\r"));
 }
 
+static void test_wrap(void) {
+    // Force a narrow terminal so lines span multiple rows; the buffer must stay
+    // correct through typing and mid-line editing regardless of wrapping.
+    lineedit_init(&ed, cap_write, NULL, "> ");
+    ed.cols = 10;
+    ed.width_queried = 1;  // skip the ESC[6n probe
+    lineedit_start(&ed);
+    TEST_ASSERT_EQUAL_STRING("abcdefghijklmnopqrst", feed("abcdefghijklmnopqrst\r"));
+    // Ctrl-A to the start of a wrapped line, then insert.
+    TEST_ASSERT_EQUAL_STRING("Xabcdefghijklmnop", feed("abcdefghijklmnop\x01X\r"));
+}
+
+static void test_crlf_coalesce(void) {
+    char *o;
+    // CRLF must yield exactly one completed line, not two.
+    lineedit_init(&ed, cap_write, NULL, "> ");
+    ed.width_queried = 1;
+    lineedit_start(&ed);
+    int lines = 0;
+    for (const char *p = "hi\r\n"; *p; p++)
+        if (lineedit_feed(&ed, *p, &o)) lines++;
+    TEST_ASSERT_EQUAL_INT(1, lines);
+    // LFCR too.
+    lines = 0;
+    for (const char *p = "yo\n\r"; *p; p++)
+        if (lineedit_feed(&ed, *p, &o)) lines++;
+    TEST_ASSERT_EQUAL_INT(1, lines);
+    // Two real Enters (bare CRs) are still two lines.
+    lines = 0;
+    for (const char *p = "a\rb\r"; *p; p++)
+        if (lineedit_feed(&ed, *p, &o)) lines++;
+    TEST_ASSERT_EQUAL_INT(2, lines);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_basic_line);
@@ -228,5 +262,7 @@ int main(void) {
     RUN_TEST(test_tab_list);
     RUN_TEST(test_kill_yank);
     RUN_TEST(test_reverse_search);
+    RUN_TEST(test_wrap);
+    RUN_TEST(test_crlf_coalesce);
     return UNITY_END();
 }
