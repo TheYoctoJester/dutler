@@ -424,6 +424,78 @@ static void cmd_help(char **sp) {
     console_print("  <id> on|off|toggle      shorthand: drop the 'out' keyword\r\n");
 }
 
+// Append entries of `list` that start with `prefix` to out[] (bounded by max).
+static size_t add_matches(const char **out, size_t max, size_t n, const char *prefix,
+                          const char *const *list, size_t nlist) {
+    size_t pl = strlen(prefix);
+    for (size_t i = 0; i < nlist && n < max; i++)
+        if (strncmp(list[i], prefix, pl) == 0) out[n++] = list[i];
+    return n;
+}
+
+size_t command_complete(const char *line, size_t cursor, const char **out, size_t max) {
+    static const char *const set_keys[] = {"baud",  "format",  "echo",
+                                           "shell", "dutname", "outname"};
+    static const char *const get_keys[] = {"baud",    "format",  "echo",   "shell",
+                                           "dutname", "outname", "serial", "version"};
+    static const char *const on_off[] = {"on", "off"};
+    static const char *const on_off_tog[] = {"on", "off", "toggle"};
+    static const char *const clear_kw[] = {"clear"};
+
+    if (max == 0) return 0;
+
+    // Tokenize the line up to the cursor. A trailing space means we are starting a
+    // fresh (empty-prefix) token; otherwise we are completing the last token.
+    char tmp[CONSOLE_LINE_MAX];
+    size_t clen = cursor < sizeof(tmp) - 1 ? cursor : sizeof(tmp) - 1;
+    memcpy(tmp, line, clen);
+    tmp[clen] = '\0';
+    bool fresh = (clen == 0) || tmp[clen - 1] == ' ' || tmp[clen - 1] == '\t';
+
+    char *argv[8];
+    int argc = 0;
+    char *sp = NULL;
+    for (char *t = strtok_r(tmp, " \t", &sp); t && argc < 8; t = strtok_r(NULL, " \t", &sp))
+        argv[argc++] = t;
+
+    size_t tokpos = fresh ? (size_t)argc : (size_t)(argc - 1);
+    const char *prefix = fresh ? "" : argv[argc - 1];
+    size_t pl = strlen(prefix);
+    size_t n = 0;
+
+    if (tokpos == 0) {  // command verbs (not hidden) + output names (shorthand)
+        for (size_t i = 0; i < COMMAND_COUNT && n < max; i++)
+            if (commands[i].help && strncmp(commands[i].name, prefix, pl) == 0)
+                out[n++] = commands[i].name;
+        for (int i = 0; i < OUT_COUNT && n < max; i++)
+            if (g_settings.out_name[i][0] && strncmp(g_settings.out_name[i], prefix, pl) == 0)
+                out[n++] = g_settings.out_name[i];
+    } else if (tokpos == 1) {
+        if (strcmp(argv[0], "set") == 0)
+            n = add_matches(out, max, n, prefix, set_keys, sizeof(set_keys) / sizeof(*set_keys));
+        else if (strcmp(argv[0], "get") == 0)
+            n = add_matches(out, max, n, prefix, get_keys, sizeof(get_keys) / sizeof(*get_keys));
+        else if (strcmp(argv[0], "out") == 0) {
+            for (int i = 0; i < OUT_COUNT && n < max; i++)
+                if (g_settings.out_name[i][0] && strncmp(g_settings.out_name[i], prefix, pl) == 0)
+                    out[n++] = g_settings.out_name[i];
+        } else if (outputs_resolve(argv[0]) >= 0)  // "<output> ..." shorthand
+            n = add_matches(out, max, n, prefix, on_off_tog, sizeof(on_off_tog) / sizeof(*on_off_tog));
+    } else if (tokpos == 2) {
+        if (strcmp(argv[0], "set") == 0) {
+            if (strcmp(argv[1], "echo") == 0 || strcmp(argv[1], "shell") == 0)
+                n = add_matches(out, max, n, prefix, on_off, sizeof(on_off) / sizeof(*on_off));
+            else if (strcmp(argv[1], "dutname") == 0)
+                n = add_matches(out, max, n, prefix, clear_kw, 1);
+        } else if (strcmp(argv[0], "out") == 0)
+            n = add_matches(out, max, n, prefix, on_off_tog, sizeof(on_off_tog) / sizeof(*on_off_tog));
+    } else if (tokpos == 3) {
+        if (strcmp(argv[0], "set") == 0 && strcmp(argv[1], "outname") == 0)
+            n = add_matches(out, max, n, prefix, clear_kw, 1);
+    }
+    return n;
+}
+
 void command_dispatch(char *s) {
     char *sp = NULL;
     char *tok = strtok_r(s, " \t", &sp);

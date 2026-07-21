@@ -325,6 +325,58 @@ static void test_get_all(void) {
     ASSERT_SAID("version");
 }
 
+static bool cand_has(const char **c, size_t n, const char *s) {
+    for (size_t i = 0; i < n; i++)
+        if (strcmp(c[i], s) == 0) return true;
+    return false;
+}
+
+static void test_command_complete(void) {
+    const char *c[24];
+    size_t n;
+
+    // Token 0: command verbs by prefix. "se" -> set, selftest.
+    n = command_complete("se", 2, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "set"));
+    TEST_ASSERT_TRUE(cand_has(c, n, "selftest"));
+    TEST_ASSERT_FALSE(cand_has(c, n, "get"));
+
+    // set <key>: settable keys (no read-only serial/version).
+    n = command_complete("set ", 4, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "baud"));
+    TEST_ASSERT_TRUE(cand_has(c, n, "shell"));
+    TEST_ASSERT_TRUE(cand_has(c, n, "outname"));
+    TEST_ASSERT_FALSE(cand_has(c, n, "serial"));
+
+    // get <key>: includes the read-only properties.
+    n = command_complete("get ", 4, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "serial"));
+    TEST_ASSERT_TRUE(cand_has(c, n, "version"));
+
+    // Enum values for on/off keys.
+    n = command_complete("set echo ", 9, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "on"));
+    TEST_ASSERT_TRUE(cand_has(c, n, "off"));
+    n = command_complete("set shell ", 10, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "on"));
+
+    // 'clear' after dutname / outname <n>.
+    n = command_complete("set dutname ", 12, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "clear"));
+    n = command_complete("set outname 1 ", 14, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "clear"));
+
+    // Output names: as an 'out' target, as a shorthand verb, and among token-0.
+    strcpy(g_settings.out_name[0], "pump");
+    n = command_complete("out ", 4, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "pump"));
+    n = command_complete("pump ", 5, c, 24);  // shorthand -> actions
+    TEST_ASSERT_TRUE(cand_has(c, n, "on"));
+    TEST_ASSERT_TRUE(cand_has(c, n, "toggle"));
+    n = command_complete("pu", 2, c, 24);  // token 0 offers the output name
+    TEST_ASSERT_TRUE(cand_has(c, n, "pump"));
+}
+
 static void test_get_single_and_unknown(void) {
     run("get baud");
     ASSERT_SAID("baud 115200");
@@ -345,6 +397,7 @@ int main(void) {
     RUN_TEST(test_set_dutname);
     RUN_TEST(test_get_all);
     RUN_TEST(test_get_single_and_unknown);
+    RUN_TEST(test_command_complete);
     RUN_TEST(test_out_on_off_toggle);
     RUN_TEST(test_number_shorthand);
     RUN_TEST(test_outname_and_shorthand);

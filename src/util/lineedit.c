@@ -131,10 +131,59 @@ static void hist_down(lineedit_t *ed) {  // newer
 }
 
 // ---------------------------------------------------------------------------
-//  Completion (Tab) — wired in a later commit; no-op without a provider
+//  Completion (Tab)
 // ---------------------------------------------------------------------------
 
-static void do_complete(lineedit_t *ed) { (void)ed; }
+#define LINEEDIT_MAX_COMPLETIONS 24
+
+// Length of the longest common prefix across cand[0..n) (n >= 1).
+static size_t common_prefix_len(const char *const *cand, size_t n) {
+    for (size_t i = 0;; i++) {
+        char c = cand[0][i];
+        if (c == '\0') return i;
+        for (size_t k = 1; k < n; k++)
+            if (cand[k][i] != c) return i;
+    }
+}
+
+// Insert a run of characters at the cursor (as if typed).
+static void insert_run(lineedit_t *ed, const char *s, size_t len) {
+    for (size_t i = 0; i < len; i++) insert_char(ed, s[i]);
+}
+
+static void do_complete(lineedit_t *ed) {
+    if (!ed->complete) return;
+
+    // Current token: from the last space before the cursor up to the cursor.
+    size_t start = ed->pos;
+    while (start > 0 && ed->buf[start - 1] != ' ') start--;
+    size_t prefix_len = ed->pos - start;
+
+    const char *cand[LINEEDIT_MAX_COMPLETIONS];
+    size_t n = ed->complete(ed->buf, ed->pos, cand, LINEEDIT_MAX_COMPLETIONS);
+    if (n == 0) return;
+
+    if (n == 1) {  // unique: complete it and add a separating space
+        insert_run(ed, cand[0] + prefix_len, strlen(cand[0]) - prefix_len);
+        insert_char(ed, ' ');
+        return;
+    }
+
+    // Several: extend by the longest common prefix if that makes progress,
+    // otherwise list the candidates and redraw the prompt + line.
+    size_t lcp = common_prefix_len(cand, n);
+    if (lcp > prefix_len) {
+        insert_run(ed, cand[0] + prefix_len, lcp - prefix_len);
+        return;
+    }
+    ed->write("\r\n");
+    for (size_t i = 0; i < n; i++) {
+        ed->write(cand[i]);
+        ed->write("  ");
+    }
+    ed->write("\r\n");
+    refresh(ed);
+}
 
 // ---------------------------------------------------------------------------
 //  Public API

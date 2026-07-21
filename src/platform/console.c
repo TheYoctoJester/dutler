@@ -52,9 +52,7 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
 // finished line, then re-prompt.
 static void shell_task(void) {
     if (!editor_ready) {
-        // Completion provider (command_complete) is wired in a later commit; NULL
-        // here makes Tab a no-op meanwhile.
-        lineedit_init(&g_editor, console_print, NULL, SHELL_PROMPT);
+        lineedit_init(&g_editor, console_print, command_complete, SHELL_PROMPT);
         lineedit_start(&g_editor);
         editor_ready = true;
     }
