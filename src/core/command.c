@@ -56,8 +56,8 @@ static void cmd_help(char **sp);
 // clang-format off
 static const command_t commands[] = {
     {"out",           cmd_out,           "out <id> on|off|toggle  id=number or name"},
-    {"set",           cmd_set,           "set <key> <value>  keys: baud|format|echo|dutname|outname <n>"},
-    {"get",           cmd_get,           "get [<key>]  read setting(s): baud|format|echo|dutname|outname <n>|serial|version"},
+    {"set",           cmd_set,           "set <key> <value>  keys: baud|format|echo|shell|dutname|outname <n>"},
+    {"get",           cmd_get,           "get [<key>]  read setting(s): baud|format|echo|shell|dutname|outname <n>|serial|version"},
     {"save",          cmd_save,          "save  persist settings to flash"},
     {"selftest",      cmd_selftest,      "selftest  GP0<->GP1 loopback check"},
     {"factory-reset", cmd_factory_reset, "factory-reset confirm  erase saved settings"},
@@ -132,6 +132,8 @@ static bool get_scalar(const char *key) {
                  parity_to_char(g_settings.parity), (unsigned)g_settings.stop_bits);
     } else if (strcmp(key, "echo") == 0) {
         snprintf(msg, sizeof(msg), "echo %s\r\n", g_settings.echo ? "on" : "off");
+    } else if (strcmp(key, "shell") == 0) {
+        snprintf(msg, sizeof(msg), "shell %s\r\n", g_settings.shell ? "on" : "off");
     } else if (strcmp(key, "dutname") == 0) {
         snprintf(msg, sizeof(msg), "dutname %s\r\n", g_settings.device_name);
     } else if (strcmp(key, "serial") == 0) {
@@ -157,6 +159,7 @@ static void cmd_get(char **sp) {
         get_scalar("baud");
         get_scalar("format");
         get_scalar("echo");
+        get_scalar("shell");
         get_scalar("dutname");
         for (uint8_t i = 0; i < OUT_COUNT; i++) get_outname(i);
         get_scalar("serial");
@@ -178,14 +181,14 @@ static void cmd_get(char **sp) {
         return;
     }
     if (!get_scalar(key))
-        console_print("error: unknown key (baud|format|echo|dutname|outname|serial|version)\r\n");
+        console_print("error: unknown key (baud|format|echo|shell|dutname|outname|serial|version)\r\n");
 }
 
 static void cmd_set(char **sp) {
     char *what = strtok_r(NULL, " \t", sp);
     if (!what) {
         console_print(
-            "error: usage 'set <key> <value>'  keys: baud|format|echo|dutname|outname <n>\r\n");
+            "error: usage 'set <key> <value>'  keys: baud|format|echo|shell|dutname|outname <n>\r\n");
         return;
     }
 
@@ -288,6 +291,20 @@ static void cmd_set(char **sp) {
         }
         dirty = true;
         console_print("ok\r\n");
+    } else if (strcmp(what, "shell") == 0) {
+        // Interactive-shell mode: prompt, in-line editing, history (see lineedit.c).
+        // Like echo it takes effect at once (console_task reads it live); 'save'
+        // persists it. Off = the plain, scriptable line protocol.
+        if (strcmp(val, "on") == 0)
+            g_settings.shell = 1;
+        else if (strcmp(val, "off") == 0)
+            g_settings.shell = 0;
+        else {
+            console_print("error: shell must be 'on' or 'off'\r\n");
+            return;
+        }
+        dirty = true;
+        console_print("ok\r\n");
     } else if (strcmp(what, "dutname") == 0) {
         // Device/DUT label surfaced in the USB product string (and thus in
         // /dev/serial/by-id). Restrict to a udev-clean charset so the by-id path
@@ -316,7 +333,7 @@ static void cmd_set(char **sp) {
     } else if (strcmp(what, "serial") == 0 || strcmp(what, "version") == 0) {
         console_print("error: read-only property (use 'get')\r\n");
     } else {
-        console_print("error: unknown key (baud|format|echo|dutname|outname)\r\n");
+        console_print("error: unknown key (baud|format|echo|shell|dutname|outname)\r\n");
     }
 }
 
