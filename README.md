@@ -218,6 +218,7 @@ always-current command list, so this README doesn't try to mirror it. In brief:
   - **`baud`** / **`format`** (e.g. `8N1`) — bridge UART defaults (effective after `save` + reboot).
   - **`echo`** (`on|off`) — control-port local echo (off by default; effective immediately, handy
     for raw terminals that don't echo locally).
+  - **`shell`** (`on|off`) — interactive-shell mode (off by default); see *Interactive shell* below.
   - **`outname <n>`** (`<alias|clear>`) — label output `n` (usable as the shorthand verb above).
   - **`dutname`** (`<str|clear>`) — a human/DUT-oriented label (`[A-Za-z0-9._-]`, ≤ 24 chars). It
     goes into the USB product string, so the `/dev/serial/by-id/` path becomes
@@ -232,10 +233,24 @@ always-current command list, so this README doesn't try to mirror it. In brief:
   **`bootsel`** (reboot into the USB bootloader), and **`reset`** (warm reboot into the
   application, e.g. to clear an occasional UART lockup) round it out.
 
+### Interactive shell
+
+`set shell on` turns the Control port into a readline-style shell: a `dutler> ` prompt, in-line
+editing (Left/Right/Home/End, Ctrl-A/E, backspace/Delete), Up/Down command **history**, **Ctrl-R**
+reverse search, Ctrl-U/K/W kill + Ctrl-Y yank, **Tab** completion of commands/keys/values/output
+names, and coloured replies (errors red, `ok` green). The firmware drives the whole terminal, so
+the host just needs a raw, VT100-style terminal (`picocom`, `screen`, …). Note that **scrollback is
+a terminal feature**, not the DUTler's — use `screen`/`tmux` if you want it (`picocom` has none);
+history, by contrast, lives in the DUTler.
+
+Shell mode is **off by default** so the promptless, un-echoed line protocol stays clean for scripts
+and CI; persist your choice with `save`. A DUTler left in shell mode will feed prompt/echo/colour to
+a scripted `printf | cat` driver, so keep it off for automation.
+
 ## Persistent settings
 
-Output **names**, the **bridge boot UART config**, the **control-port echo** flag, and the
-**device name** are stored in flash. `set …` commands
+Output **names**, the **bridge boot UART config**, the **control-port echo** flag, the
+**device name**, and the **interactive-shell** flag are stored in flash. `set …` commands
 change them in RAM (shown as "unsaved changes" in `status`); `save` writes them. They survive
 power cycles *and* normal firmware reflashes (the UF2 only overwrites the program region, not
 the settings sectors).
@@ -247,7 +262,8 @@ erased, so a **failed or power-interrupted save cannot lose the last good config
 falls back to the older slot (the half-written one fails its CRC). A blank/garbage pair falls
 back to safe defaults. The record is **versioned**; `src/core/settings.c` documents the append-only
 evolution rules and migrates older formats in place on first boot (single-slot v1 records are
-upgraded to A/B, and pre-device-name v2 records to v3, preserving the existing settings).
+upgraded to A/B, pre-device-name v2 records to v3, and pre-shell-flag v3 records to v4, preserving
+the existing settings).
 
 **Outputs themselves always boot OFF** — their state is deliberately not persisted, so a power
 blip can never silently re-energize a load. Implemented in `src/core/settings.c`
