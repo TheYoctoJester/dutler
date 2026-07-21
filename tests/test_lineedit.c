@@ -130,6 +130,57 @@ static void test_prompt_on_start(void) {
     TEST_ASSERT_NOT_NULL(strstr(cap, "> "));  // prompt was emitted
 }
 
+// --- Tab completion (driven by a configurable stub provider) ---
+static const char **g_cands;
+static size_t g_ncands;
+static size_t stub_complete(const char *line, size_t cursor, const char **out, size_t max) {
+    size_t start = cursor;
+    while (start > 0 && line[start - 1] != ' ') start--;
+    size_t pl = cursor - start;
+    const char *pre = line + start;
+    size_t n = 0;
+    for (size_t i = 0; i < g_ncands && n < max; i++)
+        if (strncmp(g_cands[i], pre, pl) == 0) out[n++] = g_cands[i];
+    return n;
+}
+static void init_stub(void) {
+    lineedit_init(&ed, cap_write, stub_complete, "> ");
+    lineedit_start(&ed);
+    cap_clear();
+}
+
+static void test_tab_unique(void) {
+    static const char *C[] = {"baud", "format", "echo"};
+    g_cands = C;
+    g_ncands = 3;
+    init_stub();
+    // "for" + Tab -> only "format" matches -> completes with a trailing space.
+    TEST_ASSERT_EQUAL_STRING("format ", feed("for\t\r"));
+}
+
+static void test_tab_common_prefix(void) {
+    static const char *C[] = {"setbaud", "setecho"};
+    g_cands = C;
+    g_ncands = 2;
+    init_stub();
+    // "s" + Tab -> two matches sharing "set" -> extend to the common prefix only.
+    TEST_ASSERT_EQUAL_STRING("set", feed("s\t\r"));
+}
+
+static void test_tab_list(void) {
+    static const char *C[] = {"baud", "format", "echo"};
+    g_cands = C;
+    g_ncands = 3;
+    init_stub();
+    // Empty prefix + Tab -> no common prefix -> list all candidates.
+    cap_clear();
+    feed("\t");
+    TEST_ASSERT_NOT_NULL(strstr(cap, "baud"));
+    TEST_ASSERT_NOT_NULL(strstr(cap, "format"));
+    TEST_ASSERT_NOT_NULL(strstr(cap, "echo"));
+    TEST_ASSERT_EQUAL_STRING("", feed("\r"));  // buffer stayed empty
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_basic_line);
@@ -141,5 +192,8 @@ int main(void) {
     RUN_TEST(test_history_dedup_and_stash);
     RUN_TEST(test_ctrl_c_aborts);
     RUN_TEST(test_prompt_on_start);
+    RUN_TEST(test_tab_unique);
+    RUN_TEST(test_tab_common_prefix);
+    RUN_TEST(test_tab_list);
     return UNITY_END();
 }
