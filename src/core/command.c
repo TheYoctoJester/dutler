@@ -42,28 +42,26 @@ typedef struct {
 } command_t;
 
 static void cmd_out(char **sp);
-static void cmd_name(char **sp);
 static void cmd_set(char **sp);
+static void cmd_get(char **sp);
 static void cmd_save(char **sp);
 static void cmd_selftest(char **sp);
 static void cmd_factory_reset(char **sp);
 static void cmd_status(char **sp);
 static void cmd_version(char **sp);
-static void cmd_serial(char **sp);
 static void cmd_bootsel(char **sp);
 static void cmd_help(char **sp);
 
 // clang-format off
 static const command_t commands[] = {
     {"out",           cmd_out,           "out <id> on|off|toggle  id=number or name"},
-    {"name",          cmd_name,          "name <n> <alias|clear>  label output n"},
-    {"set",           cmd_set,           "set baud <n> | format <8N1> | echo on|off | name <str|clear>"},
-    {"save",          cmd_save,          "save  persist names + bridge defaults"},
+    {"set",           cmd_set,           "set <key> <value>  keys: baud|format|echo|dutname|outname <n>"},
+    {"get",           cmd_get,           "get [<key>]  read setting(s): baud|format|echo|dutname|outname <n>|serial"},
+    {"save",          cmd_save,          "save  persist settings to flash"},
     {"selftest",      cmd_selftest,      "selftest  GP0<->GP1 loopback check"},
     {"factory-reset", cmd_factory_reset, "factory-reset confirm  erase saved settings"},
     {"status",        cmd_status,        "status  list outputs + bridge defaults"},
     {"version",       cmd_version,       "version  print firmware version"},
-    {"serial",        cmd_serial,        "serial  print hardware serial number"},
     {"bootsel",       cmd_bootsel,       "bootsel  reboot into USB bootloader"},
     {"reset",         cmd_bootsel,       NULL},  // hidden alias for bootsel
     {"help",          cmd_help,          "help  show this text"},
@@ -121,49 +119,115 @@ static void cmd_out(char **sp) {
     out_action(idx, sp);
 }
 
-static void cmd_name(char **sp) {
-    char *a_n = strtok_r(NULL, " \t", sp);
-    char *a_alias = strtok_r(NULL, " \t", sp);
-    if (!a_n || !a_alias) {
-        console_print("error: usage 'name <n> <alias|clear>'\r\n");
-        return;
-    }
-    uint32_t n;
-    if (!parse_u32(a_n, &n) || n < 1 || n > OUT_COUNT) {
-        console_print("error: output number out of range\r\n");
-        return;
-    }
-    char *dst = g_settings.out_name[n - 1];
-    if (strcmp(a_alias, "clear") == 0) {
-        dst[0] = '\0';
+// --- get: settings + device properties exposed as a key/value store ---
+
+// Print one scalar "key value" line. Returns false if the key is not a known
+// scalar (the caller handles the indexed 'outname' and unknown-key reporting).
+static bool get_scalar(const char *key) {
+    char msg[64];
+    if (strcmp(key, "baud") == 0) {
+        snprintf(msg, sizeof(msg), "baud %lu\r\n", (unsigned long)g_settings.baud);
+    } else if (strcmp(key, "format") == 0) {
+        snprintf(msg, sizeof(msg), "format %u%c%u\r\n", (unsigned)g_settings.data_bits,
+                 parity_to_char(g_settings.parity), (unsigned)g_settings.stop_bits);
+    } else if (strcmp(key, "echo") == 0) {
+        snprintf(msg, sizeof(msg), "echo %s\r\n", g_settings.echo ? "on" : "off");
+    } else if (strcmp(key, "dutname") == 0) {
+        snprintf(msg, sizeof(msg), "dutname %s\r\n", g_settings.device_name);
+    } else if (strcmp(key, "serial") == 0) {
+        snprintf(msg, sizeof(msg), "serial %s\r\n", usb_get_serial());
     } else {
-        uint32_t tmp;
-        if (parse_u32(a_alias, &tmp)) {
-            console_print("error: name cannot be all digits\r\n");
-            return;
-        }
-        if (is_reserved_word(a_alias)) {
-            console_print("error: name collides with a command word\r\n");
-            return;
-        }
-        if (strlen(a_alias) >= OUT_NAME_MAX) {
-            console_print("error: name too long\r\n");
-            return;
-        }
-        strncpy(dst, a_alias, OUT_NAME_MAX - 1);
-        dst[OUT_NAME_MAX - 1] = '\0';
+        return false;
     }
-    dirty = true;
-    console_print("ok\r\n");
+    console_print(msg);
+    return true;
+}
+
+static void get_outname(uint8_t i) {
+    char msg[64];
+    snprintf(msg, sizeof(msg), "outname %u %s\r\n", (unsigned)(i + 1), g_settings.out_name[i]);
+    console_print(msg);
+}
+
+static void cmd_get(char **sp) {
+    char *key = strtok_r(NULL, " \t", sp);
+    if (!key) {  // no key: dump the whole store
+        get_scalar("baud");
+        get_scalar("format");
+        get_scalar("echo");
+        get_scalar("dutname");
+        for (uint8_t i = 0; i < OUT_COUNT; i++) get_outname(i);
+        get_scalar("serial");
+        return;
+    }
+    if (strcmp(key, "outname") == 0) {  // indexed: 'get outname' (all) or 'get outname <n>'
+        char *a_n = strtok_r(NULL, " \t", sp);
+        if (!a_n) {
+            for (uint8_t i = 0; i < OUT_COUNT; i++) get_outname(i);
+            return;
+        }
+        uint32_t n;
+        if (!parse_u32(a_n, &n) || n < 1 || n > OUT_COUNT) {
+            console_print("error: output number out of range\r\n");
+            return;
+        }
+        get_outname((uint8_t)(n - 1));
+        return;
+    }
+    if (!get_scalar(key))
+        console_print("error: unknown key (baud|format|echo|dutname|outname|serial)\r\n");
 }
 
 static void cmd_set(char **sp) {
     char *what = strtok_r(NULL, " \t", sp);
-    char *val = strtok_r(NULL, " \t", sp);
-    if (!what || !val) {
+    if (!what) {
         console_print(
-            "error: usage 'set baud <n>' | 'set format <8N1>' | 'set echo on|off' | "
-            "'set name <str|clear>'\r\n");
+            "error: usage 'set <key> <value>'  keys: baud|format|echo|dutname|outname <n>\r\n");
+        return;
+    }
+
+    // Indexed key: 'set outname <n> <alias|clear>' labels an output. The name is
+    // usable as a shorthand verb, so it must not be all-digits or shadow a command.
+    if (strcmp(what, "outname") == 0) {
+        char *a_n = strtok_r(NULL, " \t", sp);
+        char *a_alias = strtok_r(NULL, " \t", sp);
+        if (!a_n || !a_alias) {
+            console_print("error: usage 'set outname <n> <alias|clear>'\r\n");
+            return;
+        }
+        uint32_t n;
+        if (!parse_u32(a_n, &n) || n < 1 || n > OUT_COUNT) {
+            console_print("error: output number out of range\r\n");
+            return;
+        }
+        char *dst = g_settings.out_name[n - 1];
+        if (strcmp(a_alias, "clear") == 0) {
+            dst[0] = '\0';
+        } else {
+            uint32_t tmp;
+            if (parse_u32(a_alias, &tmp)) {
+                console_print("error: name cannot be all digits\r\n");
+                return;
+            }
+            if (is_reserved_word(a_alias)) {
+                console_print("error: name collides with a command word\r\n");
+                return;
+            }
+            if (strlen(a_alias) >= OUT_NAME_MAX) {
+                console_print("error: name too long\r\n");
+                return;
+            }
+            strncpy(dst, a_alias, OUT_NAME_MAX - 1);
+            dst[OUT_NAME_MAX - 1] = '\0';
+        }
+        dirty = true;
+        console_print("ok\r\n");
+        return;
+    }
+
+    char *val = strtok_r(NULL, " \t", sp);
+    if (!val) {
+        console_print("error: usage 'set <key> <value>'\r\n");
         return;
     }
     if (strcmp(what, "baud") == 0) {
@@ -221,7 +285,7 @@ static void cmd_set(char **sp) {
         }
         dirty = true;
         console_print("ok\r\n");
-    } else if (strcmp(what, "name") == 0) {
+    } else if (strcmp(what, "dutname") == 0) {
         // Device/DUT label surfaced in the USB product string (and thus in
         // /dev/serial/by-id). Restrict to a udev-clean charset so the by-id path
         // is predictable. Applied live via a USB re-enumeration; 'save' persists.
@@ -246,8 +310,10 @@ static void cmd_set(char **sp) {
         dirty = true;
         console_print("ok (run 'save' to persist); re-enumerating USB...\r\n");
         usb_reenumerate();  // drops open handles on this device; by-id path updates
+    } else if (strcmp(what, "serial") == 0) {
+        console_print("error: 'serial' is read-only (use 'get serial')\r\n");
     } else {
-        console_print("error: set what? (baud|format|echo|name)\r\n");
+        console_print("error: unknown key (baud|format|echo|dutname|outname)\r\n");
     }
 }
 
@@ -278,12 +344,6 @@ static void cmd_status(char **sp) {
              parity_to_char(g_settings.parity), g_settings.stop_bits);
     console_print(msg);
     console_print(g_settings.echo ? "echo on\r\n" : "echo off\r\n");
-    if (g_settings.device_name[0]) {
-        snprintf(msg, sizeof(msg), "name %s\r\n", g_settings.device_name);
-        console_print(msg);
-    }
-    snprintf(msg, sizeof(msg), "serial %s\r\n", usb_get_serial());
-    console_print(msg);
     console_print("firmware DUTler " DUTLER_VERSION "\r\n");
     if (g_boot_by_watchdog) console_print("note: last reset was a watchdog timeout\r\n");
     if (dirty) console_print("(unsaved changes - use 'save')\r\n");
@@ -292,13 +352,6 @@ static void cmd_status(char **sp) {
 static void cmd_version(char **sp) {
     (void)sp;
     console_print("DUTler " DUTLER_VERSION "\r\n");
-}
-
-static void cmd_serial(char **sp) {
-    (void)sp;
-    char msg[32];
-    snprintf(msg, sizeof(msg), "%s\r\n", usb_get_serial());
-    console_print(msg);
 }
 
 static void cmd_selftest(char **sp) {
@@ -313,9 +366,13 @@ static void cmd_factory_reset(char **sp) {
         console_print("error: 'factory-reset confirm' erases all saved settings\r\n");
         return;
     }
+    bool had_name = g_settings.device_name[0] != '\0';
     settings_reset();
     dirty = false;
     console_print("factory reset done (bridge UART defaults apply after reboot)\r\n");
+    // The device name is part of the live USB identity; if one was set, bounce the
+    // link so the by-id path drops back to the plain "DUTler" product string now.
+    if (had_name) usb_reenumerate();
 }
 
 static void cmd_bootsel(char **sp) {
