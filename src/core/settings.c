@@ -98,8 +98,35 @@ void settings_load(void) {
         return;
     }
 
-    // No current (v3) record: upgrade the newest older v2 record (also A/B with
-    // seq) in place, adding an empty device_name, then re-save as v3.
+    // No current (v4) record: upgrade the newest older v3 record (also A/B with
+    // seq) in place, adding a cleared shell flag, then re-save as v4.
+    {
+        bool have_v3 = false;
+        uint32_t best_v3 = 0;
+        uint8_t from = 1;
+        if (settings_codec_decode_v3(a, &cand, &seq)) {
+            g_settings = cand;
+            best_v3 = seq;
+            from = 0;
+            have_v3 = true;
+        }
+        if (settings_codec_decode_v3(b, &cand, &seq) && (!have_v3 || seq > best_v3)) {
+            g_settings = cand;
+            best_v3 = seq;
+            from = 1;
+            have_v3 = true;
+        }
+        if (have_v3) {
+            terminate_names();
+            g_seq = best_v3;
+            active_slot = from;  // save() writes the other slot with seq best_v3+1
+            settings_save();     // persist as v4 (best-effort; retried next boot)
+            return;
+        }
+    }
+
+    // No v3/v4 record: upgrade the newest older v2 record (also A/B with
+    // seq) in place, adding an empty device_name + cleared shell, then re-save.
     {
         bool have_v2 = false;
         uint32_t best_v2 = 0;
