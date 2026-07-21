@@ -39,6 +39,14 @@ typedef struct {
 
     uint8_t esc;       // input escape state: 0 none, 1 saw ESC, 2 in CSI (ESC[)
     uint32_t esc_num;  // accumulated CSI numeric parameter
+
+    char kill[KILL_MAX];  // last kill (Ctrl-U/K/W), re-inserted by Ctrl-Y
+    size_t kill_len;
+
+    uint8_t rsearch;                // 1 = reverse-incremental-search sub-mode (Ctrl-R)
+    char rquery[CONSOLE_LINE_MAX];  // current search query
+    size_t rquery_len;
+    size_t rmatch;                  // 1-based history index of the current match (0 = none)
 } lineedit_t;
 
 void lineedit_init(lineedit_t *ed, lineedit_write_fn write, lineedit_complete_fn complete,

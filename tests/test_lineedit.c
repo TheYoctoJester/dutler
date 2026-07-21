@@ -181,6 +181,37 @@ static void test_tab_list(void) {
     TEST_ASSERT_EQUAL_STRING("", feed("\r"));  // buffer stayed empty
 }
 
+static void test_kill_yank(void) {
+    // Ctrl-U kills to start; Ctrl-Y yanks it back.
+    TEST_ASSERT_EQUAL_STRING("hello world", feed("hello world\x15\x19\r"));
+    // Ctrl-A to start, Ctrl-K kills to end; Ctrl-Y restores.
+    TEST_ASSERT_EQUAL_STRING("hello world", feed("hello world\x01\x0b\x19\r"));
+    // Ctrl-W kills the previous word (leaving the trailing space).
+    TEST_ASSERT_EQUAL_STRING("foo bar ", feed("foo bar baz\x17\r"));
+}
+
+// Reset to a known 3-entry history (newest last). Accepting a match re-pushes it,
+// so each search scenario starts from a clean, predictable history.
+static void load_hist3(void) {
+    lineedit_init(&ed, cap_write, NULL, "> ");
+    lineedit_start(&ed);
+    feed("get baud\r");
+    feed("set echo on\r");
+    feed("get version\r");
+}
+
+static void test_reverse_search(void) {
+    // Ctrl-R + "baud" finds "get baud"; Enter executes it.
+    load_hist3();
+    TEST_ASSERT_EQUAL_STRING("get baud", feed("\x12" "baud\r"));
+    // Ctrl-R "get" -> newest "get version"; Ctrl-R again -> older "get baud".
+    load_hist3();
+    TEST_ASSERT_EQUAL_STRING("get baud", feed("\x12" "get\x12\r"));
+    // Ctrl-G cancels and restores the pre-search line.
+    load_hist3();
+    TEST_ASSERT_EQUAL_STRING("draft", feed("draft\x12" "echo\x07\r"));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_basic_line);
@@ -195,5 +226,7 @@ int main(void) {
     RUN_TEST(test_tab_unique);
     RUN_TEST(test_tab_common_prefix);
     RUN_TEST(test_tab_list);
+    RUN_TEST(test_kill_yank);
+    RUN_TEST(test_reverse_search);
     return UNITY_END();
 }
