@@ -10,10 +10,17 @@
 #include "core/command.h"
 #include "core/settings.h"
 #include "tusb.h"
+#include "util/lineedit.h"
 
-#define LINE_MAX 80
-static char line_buf[LINE_MAX];
+// Plain (shell-off) line reader state. In shell-on mode the interactive editor
+// below owns the line instead.
+static char line_buf[CONSOLE_LINE_MAX];
 static uint8_t line_len = 0;
+
+// Interactive editor (shell-on mode). Lazily (re)initialised by console_task so
+// enabling shell mode — or reconnecting — starts a fresh prompt.
+static lineedit_t g_editor;
+static bool editor_ready = false;
 
 void console_print(const char *s) {
     tud_cdc_n_write_str(CDC_ITF_OUT, s);
@@ -22,7 +29,8 @@ void console_print(const char *s) {
 
 // Mirror input back to the terminal, but only when local echo is enabled
 // (g_settings.echo). Handy for raw serial terminals that don't echo locally;
-// off by default so scripted/automated drivers see a clean reply stream.
+// off by default so scripted/automated drivers see a clean reply stream. Only
+// used by the plain (shell-off) reader — the editor does its own echo.
 static void echo(const char *s) {
     if (g_settings.echo) console_print(s);
 }
@@ -33,13 +41,38 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
     static bool was_open = false;
     if (itf != CDC_ITF_OUT) return;
     if (dtr && !was_open) {
-        line_len = 0;  // discard any half-typed line from a previous session
+        line_len = 0;         // discard any half-typed line from a previous session
+        editor_ready = false;  // force a fresh editor init + prompt on reconnect
         console_print("\r\nDUTler control port. Type 'help' for commands.\r\n");
     }
     was_open = dtr;
 }
 
-void console_task(void) {
+// Interactive (shell-on) input: feed each byte to the editor, dispatch a
+// finished line, then re-prompt.
+static void shell_task(void) {
+    if (!editor_ready) {
+        // Completion provider (command_complete) is wired in a later commit; NULL
+        // here makes Tab a no-op meanwhile.
+        lineedit_init(&g_editor, console_print, NULL, SHELL_PROMPT);
+        lineedit_start(&g_editor);
+        editor_ready = true;
+    }
+    while (tud_cdc_n_available(CDC_ITF_OUT)) {
+        int ch = tud_cdc_n_read_char(CDC_ITF_OUT);
+        if (ch < 0) break;
+        char *line;
+        if (lineedit_feed(&g_editor, (char)ch, &line)) {
+            if (line[0]) command_dispatch(line);
+            lineedit_start(&g_editor);
+        }
+    }
+}
+
+// Plain (shell-off) input: assemble a line with backspace + optional echo, no
+// prompt or escape handling — a clean, scriptable line protocol.
+static void plain_task(void) {
+    editor_ready = false;  // so turning shell back on re-inits + re-prompts
     while (tud_cdc_n_available(CDC_ITF_OUT)) {
         int ch = tud_cdc_n_read_char(CDC_ITF_OUT);
         if (ch < 0) break;
@@ -56,7 +89,7 @@ void console_task(void) {
                 line_len--;
                 echo("\b \b");  // erase the glyph on the terminal
             }
-        } else if (line_len < LINE_MAX - 1) {
+        } else if (line_len < CONSOLE_LINE_MAX - 1) {
             line_buf[line_len++] = (char)ch;
             char pair[2] = {(char)ch, '\0'};
             echo(pair);
@@ -65,4 +98,11 @@ void console_task(void) {
             console_print("error: line too long\r\n");
         }
     }
+}
+
+void console_task(void) {
+    if (g_settings.shell)
+        shell_task();
+    else
+        plain_task();
 }

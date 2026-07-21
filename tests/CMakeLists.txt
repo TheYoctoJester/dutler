@@ -53,6 +53,11 @@ dutler_test(test_pure
     test_pure.c
     ${SRC}/util/crc32.c ${SRC}/util/numparse.c ${SRC}/core/settings_codec.c)
 
+# Interactive line editor — pure logic, driven by a captured write callback.
+dutler_test(test_lineedit
+    test_lineedit.c
+    ${SRC}/util/lineedit.c)
+
 # Persistence — real settings.c against the RAM flash fake.
 dutler_test(test_settings
     test_settings.c
