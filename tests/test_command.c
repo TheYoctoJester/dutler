@@ -204,14 +204,19 @@ static void test_selftest_reflects_bridge(void) {
     ASSERT_SAID("OPEN");
 }
 
-static void test_bootsel_requests_reboot(void) {
+static void test_bootsel_and_reset(void) {
     run("bootsel");
     TEST_ASSERT_TRUE(fake_bootsel_requested());
-    ASSERT_SAID("rebooting");
+    ASSERT_SAID("BOOTSEL");
 
+    // 'reset' is a warm reboot into the application, NOT a bootsel.
+    fake_console_clear();
     fake_bootsel_clear();
-    run("reset");  // alias
-    TEST_ASSERT_TRUE(fake_bootsel_requested());
+    fake_reboot_clear();
+    run("reset");
+    ASSERT_SAID("rebooting");
+    TEST_ASSERT_FALSE(fake_bootsel_requested());
+    TEST_ASSERT_EQUAL_INT(1, fake_reboot_count());
 }
 
 static void test_unknown_and_errors(void) {
@@ -309,7 +314,7 @@ int main(void) {
     RUN_TEST(test_set_echo);
     RUN_TEST(test_factory_reset);
     RUN_TEST(test_selftest_reflects_bridge);
-    RUN_TEST(test_bootsel_requests_reboot);
+    RUN_TEST(test_bootsel_and_reset);
     RUN_TEST(test_unknown_and_errors);
     return UNITY_END();
 }
