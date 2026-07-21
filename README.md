@@ -226,8 +226,9 @@ always-current command list, so this README doesn't try to mirror it. In brief:
     and must be reopened); persisted by `save`.
   - **`serial`** — read-only device property; `get serial` prints the Pico's hardware unique ID
     (the same value used as the USB `iSerial`). `set serial` is rejected.
+  - **`version`** — read-only; `get version` prints the firmware version. `set version` is rejected.
 - **`save`** persists the settings to flash; **`status`** shows the outputs plus a quick summary.
-- **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**, **`version`**,
+- **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**,
   **`bootsel`** (reboot into the USB bootloader), and **`reset`** (warm reboot into the
   application, e.g. to clear an occasional UART lockup) round it out.
 

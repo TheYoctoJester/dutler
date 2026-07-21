@@ -37,7 +37,7 @@ static void run(const char *line) {
 #define ASSERT_NOT_SAID(needle) \
     TEST_ASSERT_NULL_MESSAGE(strstr(fake_console_text(), needle), needle)
 
-static void test_status_and_help_and_version(void) {
+static void test_status_and_help(void) {
     run("status");
     ASSERT_SAID("out 1 off");
     ASSERT_SAID("out 4 off");
@@ -47,10 +47,6 @@ static void test_status_and_help_and_version(void) {
     fake_console_clear();
     run("help");
     ASSERT_SAID("commands");
-
-    fake_console_clear();
-    run("version");
-    ASSERT_SAID("DUTler");
 }
 
 static void test_out_on_off_toggle(void) {
@@ -232,13 +228,21 @@ static void test_unknown_and_errors(void) {
     ASSERT_SAID("unknown output command");
 }
 
-static void test_get_serial_and_readonly(void) {
+static void test_readonly_props(void) {
     run("get serial");
     ASSERT_SAID("serial TESTSERIAL000001");
 
-    // serial is a read-only device property; 'set serial' is rejected.
+    fake_console_clear();
+    run("get version");
+    ASSERT_SAID("version");
+
+    // serial and version are read-only device properties; 'set' is rejected.
     fake_console_clear();
     run("set serial abc");
+    ASSERT_SAID("read-only");
+
+    fake_console_clear();
+    run("set version 9");
     ASSERT_SAID("read-only");
 }
 
@@ -284,6 +288,7 @@ static void test_get_all(void) {
     ASSERT_SAID("outname 2 relay");
     ASSERT_SAID("outname 4");
     ASSERT_SAID("serial TESTSERIAL000001");
+    ASSERT_SAID("version");
 }
 
 static void test_get_single_and_unknown(void) {
@@ -301,8 +306,8 @@ static void test_get_single_and_unknown(void) {
 
 int main(void) {
     UNITY_BEGIN();
-    RUN_TEST(test_status_and_help_and_version);
-    RUN_TEST(test_get_serial_and_readonly);
+    RUN_TEST(test_status_and_help);
+    RUN_TEST(test_readonly_props);
     RUN_TEST(test_set_dutname);
     RUN_TEST(test_get_all);
     RUN_TEST(test_get_single_and_unknown);
