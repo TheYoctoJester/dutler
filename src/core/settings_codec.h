@@ -15,31 +15,39 @@
 //
 //   +--------+---------+--------+----------------------------+-------+
 //   | magic  | version |  seq   |   payload (settings_t)     |  crc  |
-//   | u32 @0 | u32 @4  | u32 @8 |   @12 (v2) / @8 (v1)       | u32   |
+//   | u32 @0 | u32 @4  | u32 @8 |  @12 (v2/v3) / @8 (v1)     | u32   |
 //   +--------+---------+--------+----------------------------+-------+
 //
 // magic/version offsets are frozen forever so any build can read the version
 // first and pick the right layout. crc is CRC-32 over [magic .. end of payload].
+// The seq'd header (magic/version/seq) is identical for v2 and v3; only the
+// payload layout differs (v3 appends device_name), which is why the version byte
+// exists — decode() reads exactly the current payload, decode_v2() the older one.
 
 #define SETTINGS_MAGIC 0x52454C31u  // "REL1" — frozen
-#define SETTINGS_VERSION 2u         // 2 = A/B with seq; 1 = legacy single slot
+#define SETTINGS_VERSION 3u         // 3 = adds device_name; 2 = A/B w/ seq; 1 = legacy single slot
 
 #define SC_OFF_MAGIC 0u
 #define SC_OFF_VERSION 4u
-#define SC_OFF_SEQ 8u          // v2 only
-#define SC_OFF_PAYLOAD_V2 12u  // v2 payload starts here
+#define SC_OFF_SEQ 8u          // v2 + v3
+#define SC_OFF_PAYLOAD_V3 12u  // current (v3) payload starts here
+#define SC_OFF_PAYLOAD_V2 12u  // v2 payload (same offset; older, smaller payload)
 #define SC_OFF_PAYLOAD_V1 8u   // v1 payload started right after version
 
-// Full size of a current (v2) record in bytes.
-#define SETTINGS_RECORD_LEN (SC_OFF_PAYLOAD_V2 + sizeof(settings_t) + 4u)
+// Full size of a current (v3) record in bytes.
+#define SETTINGS_RECORD_LEN (SC_OFF_PAYLOAD_V3 + sizeof(settings_t) + 4u)
 
-// Encode a v2 record into `rec` (must hold >= SETTINGS_RECORD_LEN bytes).
-// Returns the number of bytes written.
+// Encode a current (v3) record into `rec` (must hold >= SETTINGS_RECORD_LEN
+// bytes). Returns the number of bytes written.
 size_t settings_codec_encode(uint8_t *rec, const settings_t *s, uint32_t seq);
 
-// Decode a v2 record. Returns true and fills *out / *seq_out only if magic,
-// version and CRC all check out; leaves them untouched otherwise.
+// Decode a current (v3) record. Returns true and fills *out / *seq_out only if
+// magic, version and CRC all check out; leaves them untouched otherwise.
 bool settings_codec_decode(const uint8_t *rec, settings_t *out, uint32_t *seq_out);
+
+// Decode an older v2 record (seq'd, no device_name) and upgrade it into *out with
+// device_name cleared. Returns *seq_out too. True only on a valid v2 record.
+bool settings_codec_decode_v2(const uint8_t *rec, settings_t *out, uint32_t *seq_out);
 
 // Decode a legacy v1 record (no seq, payload at offset 8). Returns true on a
 // valid v1 record.

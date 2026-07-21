@@ -27,4 +27,8 @@ void fake_bridge_set_selftest(bool ok);
 bool fake_bootsel_requested(void);
 void fake_bootsel_clear(void);
 
+// --- fake_sdk.c (usb_descriptors seam: serial readout + re-enumeration) ---
+int fake_reenumerate_count(void);
+void fake_reenumerate_clear(void);
+
 #endif  // DUTLER_TEST_FAKES_H

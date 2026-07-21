@@ -223,9 +223,49 @@ static void test_unknown_and_errors(void) {
     ASSERT_SAID("unknown output command");
 }
 
+static void test_serial(void) {
+    run("serial");
+    ASSERT_SAID("TESTSERIAL000001");
+    fake_console_clear();
+    run("status");
+    ASSERT_SAID("serial TESTSERIAL000001");
+}
+
+static void test_set_name(void) {
+    fake_reenumerate_clear();
+    run("set name arrakeen-rpi5");
+    ASSERT_SAID("ok");
+    TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
+    TEST_ASSERT_EQUAL_INT(1, fake_reenumerate_count());  // applied live via re-enumeration
+
+    fake_console_clear();
+    run("status");
+    ASSERT_SAID("name arrakeen-rpi5");
+
+    // Illegal charset: rejected, name unchanged, no re-enumeration.
+    fake_console_clear();
+    fake_reenumerate_clear();
+    run("set name a/b");
+    ASSERT_SAID("error");
+    TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
+    TEST_ASSERT_EQUAL_INT(0, fake_reenumerate_count());
+
+    // Too long (>= DEVICE_NAME_MAX): rejected.
+    fake_console_clear();
+    run("set name aaaaaaaaaaaaaaaaaaaaaaaaaaaa");  // 28 chars
+    ASSERT_SAID("error");
+    TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
+
+    // Clear.
+    run("set name clear");
+    TEST_ASSERT_EQUAL_STRING("", g_settings.device_name);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_status_and_help_and_version);
+    RUN_TEST(test_serial);
+    RUN_TEST(test_set_name);
     RUN_TEST(test_out_on_off_toggle);
     RUN_TEST(test_number_shorthand);
     RUN_TEST(test_name_and_name_shorthand);

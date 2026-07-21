@@ -1,10 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
+#include <stdio.h>
 #include <string.h>
 
 #include "config.h"
+#include "core/settings.h"
+#include "pico/time.h"
 #include "pico/unique_id.h"
+#include "platform/usb_descriptors.h"
 #include "tusb.h"
 
 // =====================================================================
@@ -122,6 +126,32 @@ static const char *get_serial(void) {
     return serial_str;
 }
 
+const char *usb_get_serial(void) { return get_serial(); }
+
+// Product string: "DUTler-<device_name>" when a name is set, else plain "DUTler".
+// Keeps the greppable "DUTler" marker and lets the name show in /dev/serial/by-id
+// while the immutable chip-ID stays as iSerial. "DUTler-" (7) + name (<=23) <= 31,
+// the USB string-descriptor limit enforced below.
+static char product_str[8 + DEVICE_NAME_MAX];
+
+static const char *get_product(void) {
+    if (g_settings.device_name[0] != '\0') {
+        snprintf(product_str, sizeof(product_str), "DUTler-%s", g_settings.device_name);
+        return product_str;
+    }
+    return "DUTler";
+}
+
+void usb_reenumerate(void) {
+    // Flush any pending control-port reply, then bounce the link so the host
+    // re-reads the (updated) product string. The 50 ms drain mirrors cmd_bootsel.
+    absolute_time_t deadline = make_timeout_time_ms(50);
+    while (!time_reached(deadline)) tud_task();
+    tud_disconnect();
+    sleep_ms(100);
+    tud_connect();
+}
+
 static uint16_t _desc_str[32];
 
 uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
@@ -136,7 +166,13 @@ uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
             return NULL;
         }
 
-        const char *str = (index == STRID_SERIAL) ? get_serial() : string_desc_arr[index];
+        const char *str;
+        if (index == STRID_SERIAL)
+            str = get_serial();
+        else if (index == STRID_PRODUCT)
+            str = get_product();
+        else
+            str = string_desc_arr[index];
         if (str == NULL) return NULL;
 
         chr_count = (uint8_t)strlen(str);

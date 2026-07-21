@@ -11,6 +11,13 @@
 
 #define OUT_NAME_MAX 16  // including the NUL terminator
 
+// Device name: a user/DUT-oriented label for this DUTler, surfaced in the USB
+// product string (see usb_descriptors.c) so it shows up in /dev/serial/by-id.
+// 24 keeps settings_t a multiple of 4 (no implicit padding — see the static
+// asserts in settings_codec.c) and keeps "DUTler-"+name within the 31-char USB
+// string-descriptor limit.
+#define DEVICE_NAME_MAX 24  // including the NUL terminator
+
 // Persisted settings (outputs always boot OFF, so their state is NOT stored).
 //
 // CHANGING THIS STRUCT? It is the on-flash payload. Add fields at the END only
@@ -27,6 +34,9 @@ typedef struct {
     // settings_codec.c). Same offset/size as the old pad byte, so stored records stay
     // compatible and read back echo = 0 (off), matching prior behaviour.
     uint8_t echo;
+    // Device/DUT label, "" = unset. Appended (v3) after echo. Surfaced in the USB
+    // product string; validated (charset/length) by the control port's `set name`.
+    char device_name[DEVICE_NAME_MAX];
 } settings_t;
 
 extern settings_t g_settings;

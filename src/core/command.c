@@ -16,6 +16,7 @@
 #include "platform/bridge.h"
 #include "platform/console.h"
 #include "platform/debug.h"
+#include "platform/usb_descriptors.h"
 #include "tusb.h"
 #include "util/numparse.h"
 
@@ -48,6 +49,7 @@ static void cmd_selftest(char **sp);
 static void cmd_factory_reset(char **sp);
 static void cmd_status(char **sp);
 static void cmd_version(char **sp);
+static void cmd_serial(char **sp);
 static void cmd_bootsel(char **sp);
 static void cmd_help(char **sp);
 
@@ -55,12 +57,13 @@ static void cmd_help(char **sp);
 static const command_t commands[] = {
     {"out",           cmd_out,           "out <id> on|off|toggle  id=number or name"},
     {"name",          cmd_name,          "name <n> <alias|clear>  label output n"},
-    {"set",           cmd_set,           "set baud <n> | set format <8N1> | set echo on|off"},
+    {"set",           cmd_set,           "set baud <n> | format <8N1> | echo on|off | name <str|clear>"},
     {"save",          cmd_save,          "save  persist names + bridge defaults"},
     {"selftest",      cmd_selftest,      "selftest  GP0<->GP1 loopback check"},
     {"factory-reset", cmd_factory_reset, "factory-reset confirm  erase saved settings"},
     {"status",        cmd_status,        "status  list outputs + bridge defaults"},
     {"version",       cmd_version,       "version  print firmware version"},
+    {"serial",        cmd_serial,        "serial  print hardware serial number"},
     {"bootsel",       cmd_bootsel,       "bootsel  reboot into USB bootloader"},
     {"reset",         cmd_bootsel,       NULL},  // hidden alias for bootsel
     {"help",          cmd_help,          "help  show this text"},
@@ -158,7 +161,9 @@ static void cmd_set(char **sp) {
     char *what = strtok_r(NULL, " \t", sp);
     char *val = strtok_r(NULL, " \t", sp);
     if (!what || !val) {
-        console_print("error: usage 'set baud <n>' | 'set format <8N1>' | 'set echo on|off'\r\n");
+        console_print(
+            "error: usage 'set baud <n>' | 'set format <8N1>' | 'set echo on|off' | "
+            "'set name <str|clear>'\r\n");
         return;
     }
     if (strcmp(what, "baud") == 0) {
@@ -216,8 +221,33 @@ static void cmd_set(char **sp) {
         }
         dirty = true;
         console_print("ok\r\n");
+    } else if (strcmp(what, "name") == 0) {
+        // Device/DUT label surfaced in the USB product string (and thus in
+        // /dev/serial/by-id). Restrict to a udev-clean charset so the by-id path
+        // is predictable. Applied live via a USB re-enumeration; 'save' persists.
+        if (strcmp(val, "clear") == 0) {
+            g_settings.device_name[0] = '\0';
+        } else {
+            if (strlen(val) >= DEVICE_NAME_MAX) {
+                console_print("error: name too long\r\n");
+                return;
+            }
+            for (const char *c = val; *c; c++) {
+                bool ok = (*c >= 'A' && *c <= 'Z') || (*c >= 'a' && *c <= 'z') ||
+                          (*c >= '0' && *c <= '9') || *c == '.' || *c == '_' || *c == '-';
+                if (!ok) {
+                    console_print("error: name may use only [A-Za-z0-9._-]\r\n");
+                    return;
+                }
+            }
+            strncpy(g_settings.device_name, val, DEVICE_NAME_MAX - 1);
+            g_settings.device_name[DEVICE_NAME_MAX - 1] = '\0';
+        }
+        dirty = true;
+        console_print("ok (run 'save' to persist); re-enumerating USB...\r\n");
+        usb_reenumerate();  // drops open handles on this device; by-id path updates
     } else {
-        console_print("error: set what? (baud|format|echo)\r\n");
+        console_print("error: set what? (baud|format|echo|name)\r\n");
     }
 }
 
@@ -248,6 +278,12 @@ static void cmd_status(char **sp) {
              parity_to_char(g_settings.parity), g_settings.stop_bits);
     console_print(msg);
     console_print(g_settings.echo ? "echo on\r\n" : "echo off\r\n");
+    if (g_settings.device_name[0]) {
+        snprintf(msg, sizeof(msg), "name %s\r\n", g_settings.device_name);
+        console_print(msg);
+    }
+    snprintf(msg, sizeof(msg), "serial %s\r\n", usb_get_serial());
+    console_print(msg);
     console_print("firmware DUTler " DUTLER_VERSION "\r\n");
     if (g_boot_by_watchdog) console_print("note: last reset was a watchdog timeout\r\n");
     if (dirty) console_print("(unsaved changes - use 'save')\r\n");
@@ -256,6 +292,13 @@ static void cmd_status(char **sp) {
 static void cmd_version(char **sp) {
     (void)sp;
     console_print("DUTler " DUTLER_VERSION "\r\n");
+}
+
+static void cmd_serial(char **sp) {
+    (void)sp;
+    char msg[32];
+    snprintf(msg, sizeof(msg), "%s\r\n", usb_get_serial());
+    console_print(msg);
 }
 
 static void cmd_selftest(char **sp) {

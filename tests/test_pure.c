@@ -89,12 +89,15 @@ static void test_codec_v1(void) {
     s.stop_bits = 2;
     strcpy(s.out_name[1], "alpha");
 
+    // A real v1 record carries the frozen gen-1 payload (no device_name); the
+    // first V1_PAYLOAD bytes of a settings_t are exactly that layout.
+    const size_t v1_payload = 4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u;
     uint8_t rec[SC_OFF_PAYLOAD_V1 + sizeof(settings_t) + 4];
     uint32_t magic = SETTINGS_MAGIC, ver = 1u;
     memcpy(rec + SC_OFF_MAGIC, &magic, sizeof(magic));
     memcpy(rec + SC_OFF_VERSION, &ver, sizeof(ver));
-    memcpy(rec + SC_OFF_PAYLOAD_V1, &s, sizeof(s));
-    size_t crc_off = SC_OFF_PAYLOAD_V1 + sizeof(s);
+    memcpy(rec + SC_OFF_PAYLOAD_V1, &s, v1_payload);
+    size_t crc_off = SC_OFF_PAYLOAD_V1 + v1_payload;
     uint32_t crc = dutler_crc32(rec, crc_off);
     memcpy(rec + crc_off, &crc, sizeof(crc));
 
@@ -103,9 +106,10 @@ static void test_codec_v1(void) {
     TEST_ASSERT_TRUE(settings_codec_decode_v1(rec, &out));
     TEST_ASSERT_EQUAL_UINT32(57600, out.baud);
     TEST_ASSERT_EQUAL_STRING("alpha", out.out_name[1]);
+    TEST_ASSERT_EQUAL_STRING("", out.device_name);  // absent in v1 -> cleared
 
     uint32_t seq;
-    TEST_ASSERT_FALSE(settings_codec_decode(rec, &out, &seq));  // v1 is not v2
+    TEST_ASSERT_FALSE(settings_codec_decode(rec, &out, &seq));  // v1 is not the current version
 }
 
 int main(void) {
