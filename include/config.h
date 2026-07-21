@@ -83,4 +83,18 @@
 // WATCHDOG_TIMEOUT_MS or an idle bus would trip the watchdog.
 #define HEARTBEAT_MS 500
 
+// ---- Control-port line input / interactive shell --------------------
+// Max command line length (including the NUL). Bounds both the plain line reader
+// and the interactive editor (lineedit.c). Not named LINE_MAX: that clashes with
+// a POSIX <limits.h> macro pulled in by the host unit tests.
+#define CONSOLE_LINE_MAX 128
+// Interactive-shell command history depth (RAM ring; see lineedit.c).
+#define HISTORY_DEPTH 16
+// Prompt printed in interactive-shell mode.
+#define SHELL_PROMPT "dutler> "
+// Assumed terminal width until an ESC[6n cursor-position report answers.
+#define DEFAULT_TERM_COLS 80
+// Single kill-buffer size for Ctrl-U/K/W + Ctrl-Y yank.
+#define KILL_MAX CONSOLE_LINE_MAX
+
 #endif  // CONFIG_H

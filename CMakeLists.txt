@@ -58,6 +58,7 @@ add_executable(dutler
     src/platform/usb_descriptors.c
     src/util/crc32.c
     src/util/numparse.c
+    src/util/lineedit.c
 )
 
 target_include_directories(dutler PRIVATE
@@ -77,7 +78,7 @@ set(DUTLER_OWN_SOURCES
     src/core/command.c src/core/outputs.c src/core/settings.c src/core/settings_codec.c
     src/platform/bridge.c src/platform/console.c src/platform/debug.c
     src/platform/flash_port_pico.c src/platform/usb_descriptors.c
-    src/util/crc32.c src/util/numparse.c)
+    src/util/crc32.c src/util/numparse.c src/util/lineedit.c)
 set(DUTLER_WARNINGS -Wall -Wextra -Wshadow -Wdouble-promotion -Wconversion)
 if(DUTLER_WERROR)
     list(APPEND DUTLER_WARNINGS -Werror)
