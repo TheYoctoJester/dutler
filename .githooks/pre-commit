@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Northern.tech AS
+# SPDX-License-Identifier: Apache-2.0
+#
+# Pre-commit hook: reject staged C/H files that are not clang-format-clean,
+# mirroring the clang-format CI job (.github/workflows/ci.yml). Enable it once:
+#
+#     git config core.hooksPath .githooks
+#
+# CI pins clang-format 22.1.5 and formatting output differs between releases, so
+# install the same locally (e.g. `pip install "clang-format==22.1.5"`). If your
+# binary has a versioned name, point $CLANG_FORMAT at it. Bypass a single commit
+# with `git commit --no-verify`.
+set -euo pipefail
+
+cf="${CLANG_FORMAT:-}"
+if [ -z "$cf" ]; then
+    for c in clang-format clang-format-22; do
+        if command -v "$c" >/dev/null 2>&1; then
+            cf="$c"
+            break
+        fi
+    done
+fi
+if [ -z "$cf" ]; then
+    echo "pre-commit: clang-format not found — skipping format check." >&2
+    echo "            install it (CI pins 22.1.5): pip install 'clang-format==22.1.5'" >&2
+    exit 0
+fi
+
+# Staged (added/copied/modified) files matching the CI globs; vendored Unity is
+# excluded. The globs recurse into subdirs, so new modules are covered too.
+mapfile -t files < <(git diff --cached --name-only --diff-filter=ACM \
+    -- 'src/*.c' 'src/*.h' 'include/*.h' 'tests/*.c' 'tests/*.h' ':(exclude)tests/vendor/*')
+[ "${#files[@]}" -gt 0 ] || exit 0
+
+ver="$("$cf" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)"
+case "$ver" in
+    22.*) ;;
+    *) echo "pre-commit: warning: $cf is ${ver:-unknown}; CI pins 22.1.5, output may differ." >&2 ;;
+esac
+
+if ! "$cf" --dry-run -Werror "${files[@]}"; then
+    echo >&2
+    echo "pre-commit: clang-format violations (above). Fix them with:" >&2
+    echo "    $cf -i ${files[*]}" >&2
+    echo "then re-stage and commit (or bypass once with 'git commit --no-verify')." >&2
+    exit 1
+fi

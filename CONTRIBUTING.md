@@ -40,6 +40,10 @@ affects device behaviour, **verify it on real hardware** and say so in the PR.
   has a `.clang-format`). Use the exact version CI pins (see the `clang-format` job in
   `.github/workflows/ci.yml`); formatting output differs between releases, so matching it avoids
   spurious diffs.
+  - A **pre-commit hook** in `.githooks/` runs the same check on your staged files and blocks a
+    commit that isn't clean. Enable it once per clone: `git config core.hooksPath .githooks`. It
+    needs `clang-format` on `PATH` (set `$CLANG_FORMAT` for a versioned binary); if it's missing
+    the hook skips rather than blocks. Bypass a single commit with `git commit --no-verify`.
 - Keep it small and explicit; avoid pulling in new dependencies or floating point.
 - **Every source file carries an SPDX header** — copy the existing two lines onto any new file:
 
