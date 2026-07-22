@@ -20,6 +20,8 @@ void console_print(const char *s) {
     buf[len] = '\0';
 }
 
+void console_drain(void) {}  // no USB FIFO on the host
+
 const char *fake_console_text(void) { return buf; }
 
 void fake_console_clear(void) {

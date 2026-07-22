@@ -71,7 +71,7 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
 // Push the CDC TX FIFO onto the wire. USB full-speed only drains ~one 64-byte
 // packet per host poll, so pump tud_task() until the FIFO empties. Bounded so a
 // host that isn't reading can't wedge the loop (the main loop feeds the watchdog).
-static void console_drain(void) {
+void console_drain(void) {
     for (int i = 0; i < 24 && tud_cdc_n_write_available(CDC_ITF_OUT) < CFG_TUD_CDC_TX_BUFSIZE; i++)
         tud_task();
 }

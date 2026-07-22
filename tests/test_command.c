@@ -47,6 +47,9 @@ static void test_status_and_help(void) {
     fake_console_clear();
     run("help");
     ASSERT_SAID("commands");
+    ASSERT_SAID("get/set keys:");        // keys listed in their own section
+    ASSERT_SAID("read-only");
+    ASSERT_NOT_SAID("baud|format");      // not inlined verbatim on the set/get rows
 }
 
 static void test_out_on_off_toggle(void) {
