@@ -220,13 +220,14 @@ always-current command list, so this README doesn't try to mirror it. In brief:
 - **`out <id> on|off|toggle`** drives an output by number (`1..`) or configured name, with an
   `<id> on|off|toggle` shorthand (e.g. `pump on`).
 - Settings and device properties are a small **key/value store**: **`set <key> <value>`** writes and
-  **`get [<key>]`** reads (with no key, `get` dumps everything). The keys are:
+  **`get [<key>]`** reads (with no key, `get` dumps all the built-in settings/properties below; the
+  user `kv` store is listed separately via `get kv`). The keys are:
   - **`baud`** / **`format`** (e.g. `8N1`) — bridge UART defaults (effective after `save` + reboot).
   - **`echo`** (`on|off`) — control-port local echo (off by default; effective immediately, handy
     for raw terminals that don't echo locally).
   - **`shell`** (`on|off`) — interactive-shell mode (off by default); see *Interactive shell* below.
   - **`outname <n>`** (`<alias|clear>`) — label output `n` (usable as the shorthand verb above).
-  - **`dutname`** (`<str|clear>`) — a human/DUT-oriented label (`[A-Za-z0-9._-]`, ≤ 24 chars). It
+  - **`dutname`** (`<str|clear>`) — a human/DUT-oriented label (`[A-Za-z0-9._-]`, ≤ 23 chars). It
     goes into the USB product string, so the `/dev/serial/by-id/` path becomes
     `usb-theyoctojester_DUTler-<name>_<serial>-if0N` — handy for telling several DUTlers apart on
     one host. Applied immediately via a live USB re-enumeration (open handles on that DUTler drop
@@ -237,10 +238,11 @@ always-current command list, so this README doesn't try to mirror it. In brief:
   - **`kv <key>`** — a user key/value store for arbitrary strings (asset tag, rack location, DUT
     notes…), kept in its own flash area separate from the built-in settings. `set kv <key> <value>`
     stores (the value is the rest of the line, so spaces are allowed); `set kv <key> clear` deletes;
-    `get kv <key>` reads one; `get kv` lists all. Keys are `[A-Za-z0-9._-]` (≤ 31 chars), values
-    ≤ 111 chars. Like the other settings it stages until `save`.
+    `get kv <key>` reads one; `get kv` lists all. Keys are `[A-Za-z0-9._-]` (≤ 31 chars, and not
+    `OK`/`ERR`, which are reserved for the response terminator), values ≤ 111 chars. Like the other
+    settings it stages until `save`.
 - **`save`** persists the settings to flash; **`status`** shows the outputs plus a quick summary.
-- **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**,
+- **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**, **`help`** (the command list),
   **`bootsel`** (reboot into the USB bootloader), and **`reset`** (warm reboot into the
   application, e.g. to clear an occasional UART lockup) round it out.
 
