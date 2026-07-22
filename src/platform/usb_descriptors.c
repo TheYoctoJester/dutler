@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Northern.tech AS
 // SPDX-License-Identifier: Apache-2.0
 
+#include "platform/usb_descriptors.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -8,7 +10,6 @@
 #include "core/settings.h"
 #include "pico/time.h"
 #include "pico/unique_id.h"
-#include "platform/usb_descriptors.h"
 #include "tusb.h"
 
 // =====================================================================

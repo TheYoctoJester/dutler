@@ -180,8 +180,7 @@ static void cmd_get(char **sp) {
         get_outname((uint8_t)(n - 1));
         return;
     }
-    if (!get_scalar(key))
-        console_print("error: unknown key (see 'help' for keys)\r\n");
+    if (!get_scalar(key)) console_print("error: unknown key (see 'help' for keys)\r\n");
 }
 
 static void cmd_set(char **sp) {
@@ -405,7 +404,7 @@ static void cmd_reset(char **sp) {
     console_print("rebooting\r\n");
     absolute_time_t deadline = make_timeout_time_ms(50);
     while (!time_reached(deadline)) tud_task();  // flush the reply first
-    watchdog_reboot(0, 0, 0);                     // fire ASAP; does not return on device
+    watchdog_reboot(0, 0, 0);                    // fire ASAP; does not return on device
     while (!time_reached(make_timeout_time_ms(1000))) tud_task();  // wait for the reset
 }
 
@@ -439,8 +438,7 @@ static size_t add_matches(const char **out, size_t max, size_t n, const char *pr
 }
 
 size_t command_complete(const char *line, size_t cursor, const char **out, size_t max) {
-    static const char *const set_keys[] = {"baud",  "format",  "echo",
-                                           "shell", "dutname", "outname"};
+    static const char *const set_keys[] = {"baud", "format", "echo", "shell", "dutname", "outname"};
     static const char *const get_keys[] = {"baud",    "format",  "echo",   "shell",
                                            "dutname", "outname", "serial", "version"};
     static const char *const on_off[] = {"on", "off"};
@@ -485,7 +483,8 @@ size_t command_complete(const char *line, size_t cursor, const char **out, size_
                 if (g_settings.out_name[i][0] && strncmp(g_settings.out_name[i], prefix, pl) == 0)
                     out[n++] = g_settings.out_name[i];
         } else if (outputs_resolve(argv[0]) >= 0)  // "<output> ..." shorthand
-            n = add_matches(out, max, n, prefix, on_off_tog, sizeof(on_off_tog) / sizeof(*on_off_tog));
+            n = add_matches(out, max, n, prefix, on_off_tog,
+                            sizeof(on_off_tog) / sizeof(*on_off_tog));
     } else if (tokpos == 2) {
         if (strcmp(argv[0], "set") == 0) {
             if (strcmp(argv[1], "echo") == 0 || strcmp(argv[1], "shell") == 0)
@@ -493,7 +492,8 @@ size_t command_complete(const char *line, size_t cursor, const char **out, size_
             else if (strcmp(argv[1], "dutname") == 0)
                 n = add_matches(out, max, n, prefix, clear_kw, 1);
         } else if (strcmp(argv[0], "out") == 0)
-            n = add_matches(out, max, n, prefix, on_off_tog, sizeof(on_off_tog) / sizeof(*on_off_tog));
+            n = add_matches(out, max, n, prefix, on_off_tog,
+                            sizeof(on_off_tog) / sizeof(*on_off_tog));
     } else if (tokpos == 3) {
         if (strcmp(argv[0], "set") == 0 && strcmp(argv[1], "outname") == 0)
             n = add_matches(out, max, n, prefix, clear_kw, 1);

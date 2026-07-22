@@ -33,8 +33,10 @@ void console_print(const char *s) {
     // line prefix, so command handlers stay colour-agnostic.
     if (colorize_reply && g_settings.shell) {
         const char *color = NULL;
-        if (strncmp(s, "error", 5) == 0) color = "\x1b[31m";       // red
-        else if (strncmp(s, "ok", 2) == 0) color = "\x1b[32m";     // green
+        if (strncmp(s, "error", 5) == 0)
+            color = "\x1b[31m";  // red
+        else if (strncmp(s, "ok", 2) == 0)
+            color = "\x1b[32m";  // green
         if (color) {
             tud_cdc_n_write_str(CDC_ITF_OUT, color);
             tud_cdc_n_write_str(CDC_ITF_OUT, s);
@@ -61,7 +63,7 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
     static bool was_open = false;
     if (itf != CDC_ITF_OUT) return;
     if (dtr && !was_open) {
-        line_len = 0;         // discard any half-typed line from a previous session
+        line_len = 0;          // discard any half-typed line from a previous session
         editor_ready = false;  // force a fresh editor init + prompt on reconnect
         console_print("\r\nDUTler control port. Type 'help' for commands.\r\n");
     }

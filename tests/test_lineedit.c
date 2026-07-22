@@ -203,13 +203,16 @@ static void load_hist3(void) {
 static void test_reverse_search(void) {
     // Ctrl-R + "baud" finds "get baud"; Enter executes it.
     load_hist3();
-    TEST_ASSERT_EQUAL_STRING("get baud", feed("\x12" "baud\r"));
+    TEST_ASSERT_EQUAL_STRING("get baud", feed("\x12"
+                                              "baud\r"));
     // Ctrl-R "get" -> newest "get version"; Ctrl-R again -> older "get baud".
     load_hist3();
-    TEST_ASSERT_EQUAL_STRING("get baud", feed("\x12" "get\x12\r"));
+    TEST_ASSERT_EQUAL_STRING("get baud", feed("\x12"
+                                              "get\x12\r"));
     // Ctrl-G cancels and restores the pre-search line.
     load_hist3();
-    TEST_ASSERT_EQUAL_STRING("draft", feed("draft\x12" "echo\x07\r"));
+    TEST_ASSERT_EQUAL_STRING("draft", feed("draft\x12"
+                                           "echo\x07\r"));
 }
 
 static void test_wrap(void) {

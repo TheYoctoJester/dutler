@@ -65,7 +65,8 @@ _Static_assert(sizeof(settings_v3_t) ==
 _Static_assert(offsetof(settings_v3_t, baud) == 0, "baud must stay at offset 0");
 _Static_assert(offsetof(settings_v3_t, out_name) == 7,
                "out_name offset changed: this breaks every stored record");
-_Static_assert(offsetof(settings_v3_t, device_name) == 4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u,
+_Static_assert(offsetof(settings_v3_t, device_name) ==
+                   4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u,
                "device_name offset changed: this breaks every stored v3/v4 record");
 _Static_assert(offsetof(settings_v3_t, shell) ==
                    4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u + DEVICE_NAME_MAX,

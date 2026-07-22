@@ -53,8 +53,10 @@ static void refresh(lineedit_t *ed) {
         ed->write(seq);
     }
     size_t col = (plen + ed->pos) % cols;
-    if (col) snprintf(seq, sizeof(seq), "\r\x1b[%uC", (unsigned)col);
-    else snprintf(seq, sizeof(seq), "\r");
+    if (col)
+        snprintf(seq, sizeof(seq), "\r\x1b[%uC", (unsigned)col);
+    else
+        snprintf(seq, sizeof(seq), "\r");
     ed->write(seq);
 
     ed->oldpos = ed->pos;
@@ -169,8 +171,10 @@ static void delete_range(lineedit_t *ed, size_t a, size_t b) {
     memmove(&ed->buf[a], &ed->buf[b], ed->len - b);
     ed->len -= (b - a);
     ed->buf[ed->len] = '\0';
-    if (ed->pos >= b) ed->pos -= (b - a);
-    else if (ed->pos > a) ed->pos = a;
+    if (ed->pos >= b)
+        ed->pos -= (b - a);
+    else if (ed->pos > a)
+        ed->pos = a;
 }
 
 static void kill_to_start(lineedit_t *ed) {  // Ctrl-U
@@ -361,27 +365,43 @@ bool lineedit_feed(lineedit_t *ed, char ch, char **out_line) {
             ed->esc_num = ed->esc_num * 10u + (uint32_t)(c - '0');
             return false;
         }
-        if (c == ';') {   // next parameter; we only need the last (column) one
+        if (c == ';') {  // next parameter; we only need the last (column) one
             ed->esc_num = 0;
             return false;
         }
         ed->esc = 0;  // this byte is the final one
         switch (c) {
-            case 'A': hist_up(ed); break;
-            case 'B': hist_down(ed); break;
-            case 'C': move_right(ed); break;
-            case 'D': move_left(ed); break;
-            case 'H': move_home(ed); break;
-            case 'F': move_end(ed); break;
+            case 'A':
+                hist_up(ed);
+                break;
+            case 'B':
+                hist_down(ed);
+                break;
+            case 'C':
+                move_right(ed);
+                break;
+            case 'D':
+                move_left(ed);
+                break;
+            case 'H':
+                move_home(ed);
+                break;
+            case 'F':
+                move_end(ed);
+                break;
             case 'R':  // ESC[<row>;<col>R cursor-position report -> col = width
                 if (ed->esc_num >= 20 && ed->esc_num <= 1000) ed->cols = (uint16_t)ed->esc_num;
                 break;
             case '~':
-                if (ed->esc_num == 3) delete_at(ed);
-                else if (ed->esc_num == 1 || ed->esc_num == 7) move_home(ed);
-                else if (ed->esc_num == 4 || ed->esc_num == 8) move_end(ed);
+                if (ed->esc_num == 3)
+                    delete_at(ed);
+                else if (ed->esc_num == 1 || ed->esc_num == 7)
+                    move_home(ed);
+                else if (ed->esc_num == 4 || ed->esc_num == 8)
+                    move_end(ed);
                 break;
-            default: break;  // ignore anything else
+            default:
+                break;  // ignore anything else
         }
         return false;
     }
@@ -487,6 +507,6 @@ bool lineedit_feed(lineedit_t *ed, char ch, char **out_line) {
             return false;
         default:
             if (c >= 0x20 && c < 0x7f) insert_char(ed, (char)c);  // printable
-            return false;                                          // ignore other controls
+            return false;                                         // ignore other controls
     }
 }
