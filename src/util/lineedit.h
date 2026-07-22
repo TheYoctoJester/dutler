@@ -33,13 +33,13 @@ typedef struct {
     size_t pos;  // cursor, 0..len
 
     char hist[HISTORY_DEPTH][CONSOLE_LINE_MAX];  // newest at index 0
-    size_t hist_count;                   // stored entries, <= HISTORY_DEPTH
-    size_t hist_view;                    // 0 = live line; 1..hist_count = browsing
+    size_t hist_count;                           // stored entries, <= HISTORY_DEPTH
+    size_t hist_view;                            // 0 = live line; 1..hist_count = browsing
     char stash[CONSOLE_LINE_MAX];                // live line saved while browsing history
 
-    uint8_t esc;         // input escape state: 0 none, 1 saw ESC, 2 in CSI (ESC[)
-    uint32_t esc_num;    // accumulated CSI numeric parameter
-    uint8_t prev_eol;    // last CR/LF, to coalesce a CRLF pair into one Enter
+    uint8_t esc;       // input escape state: 0 none, 1 saw ESC, 2 in CSI (ESC[)
+    uint32_t esc_num;  // accumulated CSI numeric parameter
+    uint8_t prev_eol;  // last CR/LF, to coalesce a CRLF pair into one Enter
 
     uint16_t cols;          // terminal width in cells (DEFAULT_TERM_COLS until learned)
     uint8_t width_queried;  // 1 once the ESC[6n width probe has been sent
@@ -53,7 +53,7 @@ typedef struct {
     uint8_t rsearch;                // 1 = reverse-incremental-search sub-mode (Ctrl-R)
     char rquery[CONSOLE_LINE_MAX];  // current search query
     size_t rquery_len;
-    size_t rmatch;                  // 1-based history index of the current match (0 = none)
+    size_t rmatch;  // 1-based history index of the current match (0 = none)
 } lineedit_t;
 
 void lineedit_init(lineedit_t *ed, lineedit_write_fn write, lineedit_complete_fn complete,

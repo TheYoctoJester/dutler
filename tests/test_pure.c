@@ -122,8 +122,7 @@ static void test_codec_v3(void) {
 
     // A real v3 record carries the frozen gen-2 payload (echo + device_name, no
     // shell); the first V2_PAYLOAD bytes of a settings_t are exactly that layout.
-    const size_t v2_payload =
-        4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u + DEVICE_NAME_MAX;
+    const size_t v2_payload = 4u + 1u + 1u + 1u + (OUT_COUNT * OUT_NAME_MAX) + 1u + DEVICE_NAME_MAX;
     uint8_t rec[SC_OFF_PAYLOAD_V3 + sizeof(settings_t) + 4];
     uint32_t magic = SETTINGS_MAGIC, ver = 3u, seq_in = 9u;
     memcpy(rec + SC_OFF_MAGIC, &magic, sizeof(magic));
