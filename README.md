@@ -211,6 +211,12 @@ CI runs these on every push and pull request.
 Open the **Control** port (CDC1) and type `help` — the firmware prints the authoritative,
 always-current command list, so this README doesn't try to mirror it. In brief:
 
+> **Response protocol (for scripting).** Every command's reply is CRLF lines ending with a single
+> **status line**: `OK`, or `ERR <message>`. Any data (e.g. `baud 115200`) comes before it. So a
+> script sends `cmd\r\n` and **reads lines until one equals `OK` or starts with `ERR `** — no
+> timeout guessing, and an empty result (e.g. `get kv` with nothing stored) still returns `OK`.
+> In interactive-shell mode the terminator is shown in human form (`ok` / `error:`, colourised).
+
 - **`out <id> on|off|toggle`** drives an output by number (`1..`) or configured name, with an
   `<id> on|off|toggle` shorthand (e.g. `pump on`).
 - Settings and device properties are a small **key/value store**: **`set <key> <value>`** writes and
