@@ -246,6 +246,23 @@ static void test_crlf_coalesce(void) {
     TEST_ASSERT_EQUAL_INT(2, lines);
 }
 
+static void test_suppress_coalesces(void) {
+    // While suppressed, edits update state but draw nothing; one redraw at the end
+    // emits the final line. This is how console.c coalesces a burst of input so a
+    // full redraw isn't emitted per byte (which would overflow the CDC TX FIFO).
+    lineedit_init(&ed, cap_write, NULL, "> ");
+    ed.width_queried = 1;
+    lineedit_start(&ed);
+    cap_clear();
+    ed.suppress = 1;
+    char *o;
+    for (const char *p = "hello"; *p; p++) lineedit_feed(&ed, *p, &o);
+    TEST_ASSERT_EQUAL_STRING("", cap);  // nothing drawn while suppressed
+    lineedit_redraw(&ed);
+    TEST_ASSERT_NOT_NULL(strstr(cap, "hello"));  // final state drawn once
+    TEST_ASSERT_EQUAL_INT(0, ed.suppress);       // redraw cleared the flag
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_basic_line);
@@ -264,5 +281,6 @@ int main(void) {
     RUN_TEST(test_reverse_search);
     RUN_TEST(test_wrap);
     RUN_TEST(test_crlf_coalesce);
+    RUN_TEST(test_suppress_coalesces);
     return UNITY_END();
 }
