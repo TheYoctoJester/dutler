@@ -57,7 +57,7 @@ static void test_status_and_help(void) {
 static void test_out_on_off_toggle(void) {
     run("out 1 on");
     TEST_ASSERT_TRUE(outputs_get(0));
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
 
     run("out 1 off");
     TEST_ASSERT_FALSE(outputs_get(0));
@@ -71,18 +71,18 @@ static void test_out_on_off_toggle(void) {
 static void test_number_shorthand(void) {
     run("2 on");
     TEST_ASSERT_TRUE(outputs_get(1));
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
 }
 
 static void test_outname_and_shorthand(void) {
     run("set outname 1 pump");
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
     TEST_ASSERT_EQUAL_STRING("pump", g_settings.out_name[0]);
 
     fake_console_clear();
     run("pump on");  // shorthand by name
     TEST_ASSERT_TRUE(outputs_get(0));
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
 
     run("set outname 1 clear");
     TEST_ASSERT_EQUAL_STRING("", g_settings.out_name[0]);
@@ -121,7 +121,7 @@ static void test_set_baud_format_and_dirty(void) {
 
     fake_console_clear();
     run("save");
-    ASSERT_SAID("saved");
+    ASSERT_SAID("OK");
 
     fake_console_clear();
     run("status");
@@ -148,7 +148,7 @@ static void test_set_echo(void) {
 
     fake_console_clear();
     run("set echo on");
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
     TEST_ASSERT_EQUAL_UINT8(1, g_settings.echo);
 
     fake_console_clear();
@@ -169,7 +169,7 @@ static void test_set_echo(void) {
 
     fake_console_clear();
     run("set echo off");
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
     TEST_ASSERT_EQUAL_UINT8(0, g_settings.echo);
 }
 
@@ -181,7 +181,7 @@ static void test_set_shell(void) {
 
     fake_console_clear();
     run("set shell on");
-    ASSERT_SAID("ok");
+    ASSERT_SAID("ok");  // the terminator reflects the now-active shell mode
     TEST_ASSERT_EQUAL_UINT8(1, g_settings.shell);
 
     fake_console_clear();
@@ -202,7 +202,7 @@ static void test_set_shell(void) {
 
     fake_console_clear();
     run("set shell off");
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
     TEST_ASSERT_EQUAL_UINT8(0, g_settings.shell);
 }
 
@@ -220,7 +220,7 @@ static void test_factory_reset(void) {
     fake_console_clear();
     fake_reenumerate_clear();
     run("factory-reset confirm");
-    ASSERT_SAID("factory reset done");
+    ASSERT_SAID("OK");
     TEST_ASSERT_EQUAL_UINT32(BRIDGE_INIT_BAUD, g_settings.baud);
     TEST_ASSERT_EQUAL_STRING("", g_settings.out_name[0]);
     TEST_ASSERT_EQUAL_STRING("", g_settings.device_name);
@@ -241,14 +241,14 @@ static void test_selftest_reflects_bridge(void) {
 static void test_bootsel_and_reset(void) {
     run("bootsel");
     TEST_ASSERT_TRUE(fake_bootsel_requested());
-    ASSERT_SAID("BOOTSEL");
+    ASSERT_SAID("OK");  // plain-mode terminator (the human detail is dropped)
 
     // 'reset' is a warm reboot into the application, NOT a bootsel.
     fake_console_clear();
     fake_bootsel_clear();
     fake_reboot_clear();
     run("reset");
-    ASSERT_SAID("rebooting");
+    ASSERT_SAID("OK");
     TEST_ASSERT_FALSE(fake_bootsel_requested());
     TEST_ASSERT_EQUAL_INT(1, fake_reboot_count());
 }
@@ -287,7 +287,7 @@ static void test_readonly_props(void) {
 static void test_set_dutname(void) {
     fake_reenumerate_clear();
     run("set dutname arrakeen-rpi5");
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
     TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
     TEST_ASSERT_EQUAL_INT(1, fake_reenumerate_count());  // applied live via re-enumeration
 
@@ -299,14 +299,14 @@ static void test_set_dutname(void) {
     fake_console_clear();
     fake_reenumerate_clear();
     run("set dutname a/b");
-    ASSERT_SAID("error");
+    ASSERT_SAID("ERR");
     TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
     TEST_ASSERT_EQUAL_INT(0, fake_reenumerate_count());
 
     // Too long (>= DEVICE_NAME_MAX): rejected.
     fake_console_clear();
     run("set dutname aaaaaaaaaaaaaaaaaaaaaaaaaaaa");  // 28 chars
-    ASSERT_SAID("error");
+    ASSERT_SAID("ERR");
     TEST_ASSERT_EQUAL_STRING("arrakeen-rpi5", g_settings.device_name);
 
     // Clear.
@@ -336,9 +336,36 @@ static bool cand_has(const char **c, size_t n, const char *s) {
     return false;
 }
 
+static void test_reply_framing(void) {
+    // Plain (machine) mode: every reply ends with OK or ERR <msg>.
+    run("get baud");  // read command now carries a terminator
+    ASSERT_SAID("baud 115200");
+    ASSERT_SAID("OK");
+
+    fake_console_clear();
+    run("get kv");  // empty store still terminates (no longer silent)
+    ASSERT_SAID("OK");
+
+    fake_console_clear();
+    run("bogus");
+    ASSERT_SAID("ERR");
+
+    // Interactive shell mode: human wording (ok / error:), not OK/ERR.
+    fake_console_clear();
+    g_settings.shell = 1;
+    run("get baud");
+    ASSERT_SAID("baud 115200");
+    ASSERT_SAID("ok");
+    ASSERT_NOT_SAID("OK");
+    fake_console_clear();
+    run("bogus");
+    ASSERT_SAID("error:");
+    g_settings.shell = 0;
+}
+
 static void test_kv_set_get(void) {
     run("set kv location rack 3");  // value contains spaces
-    ASSERT_SAID("ok");
+    ASSERT_SAID("OK");
     TEST_ASSERT_EQUAL_STRING("rack 3", kv_get("location"));
 
     fake_console_clear();
@@ -370,7 +397,7 @@ static void test_kv_list_missing_clear(void) {
 static void test_kv_validation(void) {
     fake_console_clear();
     run("set kv a/b x");  // illegal key charset
-    ASSERT_SAID("error");
+    ASSERT_SAID("ERR");
     fake_console_clear();
     run("set kv");  // missing key
     ASSERT_SAID("usage");
@@ -383,7 +410,7 @@ static void test_kv_save_persists(void) {
     run("set kv x hello");
     fake_console_clear();
     run("save");
-    ASSERT_SAID("saved");
+    ASSERT_SAID("OK");
     TEST_ASSERT_FALSE(kv_dirty());
 
     run("set kv x changed");  // dirty again, not saved
@@ -473,6 +500,7 @@ int main(void) {
     RUN_TEST(test_get_all);
     RUN_TEST(test_get_single_and_unknown);
     RUN_TEST(test_command_complete);
+    RUN_TEST(test_reply_framing);
     RUN_TEST(test_kv_set_get);
     RUN_TEST(test_kv_list_missing_clear);
     RUN_TEST(test_kv_validation);

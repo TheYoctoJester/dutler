@@ -31,6 +31,33 @@ extern bool g_boot_by_watchdog;  // defined in main.c
 static bool dirty = false;  // unsaved settings changes
 
 // ---------------------------------------------------------------------------
+//  Response framing. Every command's reply ends with one status line so a
+//  machine reader can stop without a timeout:
+//    plain (shell-off) mode : `OK`            / `ERR <msg>`
+//    interactive shell mode : `ok`/`ok (…)`   / `error: <msg>`   (colourised)
+//  Data lines (if any) precede it. `detail` (reply_ok only) is a human hint
+//  shown in shell mode and dropped in the terse machine protocol.
+// ---------------------------------------------------------------------------
+static void reply_ok(const char *detail) {
+    if (g_settings.shell) {
+        char line[96];
+        if (detail && detail[0])
+            snprintf(line, sizeof(line), "ok (%s)\r\n", detail);
+        else
+            snprintf(line, sizeof(line), "ok\r\n");
+        console_print(line);
+    } else {
+        console_print("OK\r\n");
+    }
+}
+
+static void reply_err(const char *msg) {
+    char line[96];
+    snprintf(line, sizeof(line), "%s %s\r\n", g_settings.shell ? "error:" : "ERR", msg);
+    console_print(line);
+}
+
+// ---------------------------------------------------------------------------
 //  Command table — the SINGLE source of truth for the control-port vocabulary.
 //  command_dispatch(), is_reserved_word() and the `help` listing all derive
 //  from this, so adding/renaming a command can't leave any of them out of step.
@@ -85,36 +112,36 @@ static bool is_reserved_word(const char *w) {
 static void out_action(int idx, char **sp) {
     char *a_cmd = strtok_r(NULL, " \t", sp);
     if (!a_cmd) {
-        console_print("error: usage '<output> on|off|toggle'\r\n");
+        reply_err("usage '<output> on|off|toggle'");
         return;
     }
 
     if (strcmp(a_cmd, "on") == 0) {
         outputs_set(idx, true);
         dbg_printf("out %d -> on\r\n", idx + 1);
-        console_print("ok\r\n");
+        reply_ok(NULL);
     } else if (strcmp(a_cmd, "off") == 0) {
         outputs_set(idx, false);
         dbg_printf("out %d -> off\r\n", idx + 1);
-        console_print("ok\r\n");
+        reply_ok(NULL);
     } else if (strcmp(a_cmd, "toggle") == 0) {
         outputs_set(idx, !outputs_get(idx));
         dbg_printf("out %d -> %s (toggle)\r\n", idx + 1, outputs_get(idx) ? "on" : "off");
-        console_print("ok\r\n");
+        reply_ok(NULL);
     } else {
-        console_print("error: unknown output command\r\n");
+        reply_err("unknown output command");
     }
 }
 
 static void cmd_out(char **sp) {
     char *a_id = strtok_r(NULL, " \t", sp);
     if (!a_id) {
-        console_print("error: usage 'out <id> on|off|toggle'\r\n");
+        reply_err("usage 'out <id> on|off|toggle'");
         return;
     }
     int idx = outputs_resolve(a_id);
     if (idx < 0) {
-        console_print("error: unknown output\r\n");
+        reply_err("unknown output");
         return;
     }
     out_action(idx, sp);
@@ -145,6 +172,7 @@ static bool get_scalar(const char *key) {
         return false;
     }
     console_print(msg);
+    console_drain();  // multi-line dumps can exceed one TX FIFO
     return true;
 }
 
@@ -152,6 +180,7 @@ static void get_outname(uint8_t i) {
     char msg[64];
     snprintf(msg, sizeof(msg), "outname %u %s\r\n", (unsigned)(i + 1), g_settings.out_name[i]);
     console_print(msg);
+    console_drain();
 }
 
 // Print one user KV entry; drain as we go — the list can exceed one TX FIFO.
@@ -173,26 +202,30 @@ static void cmd_get(char **sp) {
         for (uint8_t i = 0; i < OUT_COUNT; i++) get_outname(i);
         get_scalar("serial");
         get_scalar("version");
+        reply_ok(NULL);
         return;
     }
     if (strcmp(key, "outname") == 0) {  // indexed: 'get outname' (all) or 'get outname <n>'
         char *a_n = strtok_r(NULL, " \t", sp);
         if (!a_n) {
             for (uint8_t i = 0; i < OUT_COUNT; i++) get_outname(i);
+            reply_ok(NULL);
             return;
         }
         uint32_t n;
         if (!parse_u32(a_n, &n) || n < 1 || n > OUT_COUNT) {
-            console_print("error: output number out of range\r\n");
+            reply_err("output number out of range");
             return;
         }
         get_outname((uint8_t)(n - 1));
+        reply_ok(NULL);
         return;
     }
     if (strcmp(key, "kv") == 0) {  // 'get kv' (all) or 'get kv <key>'
         char *sub = strtok_r(NULL, " \t", sp);
         if (!sub) {
             kv_foreach(print_kv);
+            reply_ok(NULL);
             return;
         }
         const char *v = kv_get(sub);
@@ -200,18 +233,22 @@ static void cmd_get(char **sp) {
             char line[KV_KEY_MAX + KV_VALUE_MAX + 4];
             snprintf(line, sizeof(line), "%s %s\r\n", sub, v);
             console_print(line);
+            reply_ok(NULL);
         } else {
-            console_print("error: no such key\r\n");
+            reply_err("no such key");
         }
         return;
     }
-    if (!get_scalar(key)) console_print("error: unknown key (see 'help' for keys)\r\n");
+    if (get_scalar(key))
+        reply_ok(NULL);
+    else
+        reply_err("unknown key (see 'help' for keys)");
 }
 
 static void cmd_set(char **sp) {
     char *what = strtok_r(NULL, " \t", sp);
     if (!what) {
-        console_print("error: usage 'set <key> <value>' (see 'help' for keys)\r\n");
+        reply_err("usage 'set <key> <value>' (see 'help' for keys)");
         return;
     }
 
@@ -221,12 +258,12 @@ static void cmd_set(char **sp) {
         char *a_n = strtok_r(NULL, " \t", sp);
         char *a_alias = strtok_r(NULL, " \t", sp);
         if (!a_n || !a_alias) {
-            console_print("error: usage 'set outname <n> <alias|clear>'\r\n");
+            reply_err("usage 'set outname <n> <alias|clear>'");
             return;
         }
         uint32_t n;
         if (!parse_u32(a_n, &n) || n < 1 || n > OUT_COUNT) {
-            console_print("error: output number out of range\r\n");
+            reply_err("output number out of range");
             return;
         }
         char *dst = g_settings.out_name[n - 1];
@@ -235,22 +272,22 @@ static void cmd_set(char **sp) {
         } else {
             uint32_t tmp;
             if (parse_u32(a_alias, &tmp)) {
-                console_print("error: name cannot be all digits\r\n");
+                reply_err("name cannot be all digits");
                 return;
             }
             if (is_reserved_word(a_alias)) {
-                console_print("error: name collides with a command word\r\n");
+                reply_err("name collides with a command word");
                 return;
             }
             if (strlen(a_alias) >= OUT_NAME_MAX) {
-                console_print("error: name too long\r\n");
+                reply_err("name too long");
                 return;
             }
             strncpy(dst, a_alias, OUT_NAME_MAX - 1);
             dst[OUT_NAME_MAX - 1] = '\0';
         }
         dirty = true;
-        console_print("ok\r\n");
+        reply_ok(NULL);
         return;
     }
 
@@ -260,62 +297,68 @@ static void cmd_set(char **sp) {
         char *k = strtok_r(NULL, " \t", sp);
         char *rest = strtok_r(NULL, "", sp);  // remainder of the line (or NULL)
         if (!k) {
-            console_print("error: usage 'set kv <key> <value|clear>'\r\n");
+            reply_err("usage 'set kv <key> <value|clear>'");
             return;
         }
         if (strlen(k) >= KV_KEY_MAX) {
-            console_print("error: key too long\r\n");
+            reply_err("key too long");
             return;
         }
         for (const char *c = k; *c; c++) {
             bool ok = (*c >= 'A' && *c <= 'Z') || (*c >= 'a' && *c <= 'z') ||
                       (*c >= '0' && *c <= '9') || *c == '.' || *c == '_' || *c == '-';
             if (!ok) {
-                console_print("error: key may use only [A-Za-z0-9._-]\r\n");
+                reply_err("key may use only [A-Za-z0-9._-]");
                 return;
             }
+        }
+        // A key named OK/ERR would make its 'get kv' line collide with the response
+        // terminator; forbid it so the framed protocol stays unambiguous.
+        if (strcmp(k, "OK") == 0 || strcmp(k, "ERR") == 0) {
+            reply_err("key 'OK'/'ERR' is reserved");
+            return;
         }
         char *v = rest;
         while (v && (*v == ' ' || *v == '\t')) v++;  // skip leading blanks
         if (v && strcmp(v, "clear") == 0) {
             kv_clear(k);  // clearing an absent key is a harmless no-op
-            console_print("ok (run 'save' to persist)\r\n");
+            reply_ok("run 'save' to persist");
             return;
         }
         if (!v || !*v) {
-            console_print("error: usage 'set kv <key> <value|clear>'\r\n");
+            reply_err("usage 'set kv <key> <value|clear>'");
             return;
         }
         if (strlen(v) >= KV_VALUE_MAX) {
-            console_print("error: value too long\r\n");
+            reply_err("value too long");
             return;
         }
         if (!kv_set(k, v)) {
-            console_print("error: kv store full\r\n");
+            reply_err("kv store full");
             return;
         }
-        console_print("ok (run 'save' to persist)\r\n");
+        reply_ok("run 'save' to persist");
         return;
     }
 
     char *val = strtok_r(NULL, " \t", sp);
     if (!val) {
-        console_print("error: usage 'set <key> <value>'\r\n");
+        reply_err("usage 'set <key> <value>'");
         return;
     }
     if (strcmp(what, "baud") == 0) {
         uint32_t b;
         if (!parse_u32(val, &b) || b < BRIDGE_BAUD_MIN || b > BRIDGE_BAUD_MAX) {
-            console_print("error: baud out of range (" DUTLER_XSTR(
-                BRIDGE_BAUD_MIN) ".." DUTLER_XSTR(BRIDGE_BAUD_MAX) ")\r\n");
+            reply_err("baud out of range (" DUTLER_XSTR(BRIDGE_BAUD_MIN) ".." DUTLER_XSTR(
+                BRIDGE_BAUD_MAX) ")");
             return;
         }
         g_settings.baud = b;
         dirty = true;
-        console_print("ok (effective after 'save' + reboot)\r\n");
+        reply_ok("effective after 'save' + reboot");
     } else if (strcmp(what, "format") == 0) {
         if (strlen(val) != 3) {
-            console_print("error: format must be like 8N1\r\n");
+            reply_err("format must be like 8N1");
             return;
         }
         int d = val[0] - '0';
@@ -329,22 +372,22 @@ static void cmd_set(char **sp) {
         else if (p == 'E' || p == 'e')
             parity = 2;
         else {
-            console_print("error: parity must be N, O or E\r\n");
+            reply_err("parity must be N, O or E");
             return;
         }
         if (d < 5 || d > 8) {
-            console_print("error: data bits must be 5..8\r\n");
+            reply_err("data bits must be 5..8");
             return;
         }
         if (s != 1 && s != 2) {
-            console_print("error: stop bits must be 1 or 2\r\n");
+            reply_err("stop bits must be 1 or 2");
             return;
         }
         g_settings.data_bits = (uint8_t)d;
         g_settings.parity = parity;
         g_settings.stop_bits = (uint8_t)s;
         dirty = true;
-        console_print("ok (effective after 'save' + reboot)\r\n");
+        reply_ok("effective after 'save' + reboot");
     } else if (strcmp(what, "echo") == 0) {
         // Control-port local echo. Unlike baud/format this takes effect at once
         // (console_task reads it live); 'save' just makes it stick across reboots.
@@ -353,11 +396,11 @@ static void cmd_set(char **sp) {
         else if (strcmp(val, "off") == 0)
             g_settings.echo = 0;
         else {
-            console_print("error: echo must be 'on' or 'off'\r\n");
+            reply_err("echo must be 'on' or 'off'");
             return;
         }
         dirty = true;
-        console_print("ok\r\n");
+        reply_ok(NULL);
     } else if (strcmp(what, "shell") == 0) {
         // Interactive-shell mode: prompt, in-line editing, history (see lineedit.c).
         // Like echo it takes effect at once (console_task reads it live); 'save'
@@ -367,11 +410,11 @@ static void cmd_set(char **sp) {
         else if (strcmp(val, "off") == 0)
             g_settings.shell = 0;
         else {
-            console_print("error: shell must be 'on' or 'off'\r\n");
+            reply_err("shell must be 'on' or 'off'");
             return;
         }
         dirty = true;
-        console_print("ok\r\n");
+        reply_ok(NULL);
     } else if (strcmp(what, "dutname") == 0) {
         // Device/DUT label surfaced in the USB product string (and thus in
         // /dev/serial/by-id). Restrict to a udev-clean charset so the by-id path
@@ -380,14 +423,14 @@ static void cmd_set(char **sp) {
             g_settings.device_name[0] = '\0';
         } else {
             if (strlen(val) >= DEVICE_NAME_MAX) {
-                console_print("error: name too long\r\n");
+                reply_err("name too long");
                 return;
             }
             for (const char *c = val; *c; c++) {
                 bool ok = (*c >= 'A' && *c <= 'Z') || (*c >= 'a' && *c <= 'z') ||
                           (*c >= '0' && *c <= '9') || *c == '.' || *c == '_' || *c == '-';
                 if (!ok) {
-                    console_print("error: name may use only [A-Za-z0-9._-]\r\n");
+                    reply_err("name may use only [A-Za-z0-9._-]");
                     return;
                 }
             }
@@ -395,12 +438,12 @@ static void cmd_set(char **sp) {
             g_settings.device_name[DEVICE_NAME_MAX - 1] = '\0';
         }
         dirty = true;
-        console_print("ok (run 'save' to persist); re-enumerating USB...\r\n");
+        reply_ok("run 'save' to persist; re-enumerating USB");
         usb_reenumerate();  // drops open handles on this device; by-id path updates
     } else if (strcmp(what, "serial") == 0 || strcmp(what, "version") == 0) {
-        console_print("error: read-only property (use 'get')\r\n");
+        reply_err("read-only property (use 'get')");
     } else {
-        console_print("error: unknown key (see 'help' for keys)\r\n");
+        reply_err("unknown key (see 'help' for keys)");
     }
 }
 
@@ -410,9 +453,9 @@ static void cmd_save(char **sp) {
     if (kv_dirty()) ok = kv_save() && ok;  // flush the user KV store too
     if (ok) {
         dirty = false;
-        console_print("saved\r\n");
+        reply_ok(NULL);
     } else {
-        console_print("error: save failed\r\n");
+        reply_err("save failed");
     }
 }
 
@@ -427,34 +470,39 @@ static void cmd_status(char **sp) {
         else
             snprintf(msg, sizeof(msg), "out %u %s\r\n", (unsigned)(i + 1), st);
         console_print(msg);
+        console_drain();  // status can exceed one TX FIFO
     }
     snprintf(msg, sizeof(msg), "bridge default " UART_MODE_FMT "\r\n",
              (unsigned long)g_settings.baud, g_settings.data_bits,
              parity_to_char(g_settings.parity), g_settings.stop_bits);
     console_print(msg);
+    console_drain();
     console_print(g_settings.echo ? "echo on\r\n" : "echo off\r\n");
     console_print("firmware DUTler " DUTLER_VERSION "\r\n");
     if (g_boot_by_watchdog) console_print("note: last reset was a watchdog timeout\r\n");
     if (dirty || kv_dirty()) console_print("(unsaved changes - use 'save')\r\n");
+    reply_ok(NULL);
 }
 
 static void cmd_selftest(char **sp) {
     (void)sp;
+    // The jumper result is data; the command itself always succeeds -> OK.
     console_print(bridge_selftest() ? "selftest: GP0<->GP1 continuity OK\r\n"
                                     : "selftest: GP0<->GP1 OPEN (check the loopback jumper)\r\n");
+    reply_ok(NULL);
 }
 
 static void cmd_factory_reset(char **sp) {
     char *a = strtok_r(NULL, " \t", sp);
     if (!a || strcmp(a, "confirm") != 0) {
-        console_print("error: 'factory-reset confirm' erases all saved settings\r\n");
+        reply_err("'factory-reset confirm' erases all saved settings");
         return;
     }
     bool had_name = g_settings.device_name[0] != '\0';
     settings_reset();
     kv_reset();  // wipe the user key/value store too
     dirty = false;
-    console_print("factory reset done (bridge UART defaults apply after reboot)\r\n");
+    reply_ok("factory reset done; UART defaults apply after reboot");
     // The device name is part of the live USB identity; if one was set, bounce the
     // link so the by-id path drops back to the plain "DUTler" product string now.
     if (had_name) usb_reenumerate();
@@ -462,7 +510,7 @@ static void cmd_factory_reset(char **sp) {
 
 static void cmd_bootsel(char **sp) {
     (void)sp;
-    console_print("rebooting to BOOTSEL\r\n");
+    reply_ok("rebooting to BOOTSEL");
     absolute_time_t deadline = make_timeout_time_ms(50);
     while (!time_reached(deadline)) tud_task();
     reset_usb_boot(0, 0);  // does not return
@@ -473,7 +521,7 @@ static void cmd_reset(char **sp) {
     // A plain warm reboot into the application (unlike 'bootsel'), handy to clear
     // an occasional UART/USB lockup. watchdog_reboot() (rather than watchdog_enable)
     // means main.c does NOT flag the next boot as a watchdog timeout.
-    console_print("rebooting\r\n");
+    reply_ok("rebooting");
     absolute_time_t deadline = make_timeout_time_ms(50);
     while (!time_reached(deadline)) tud_task();  // flush the reply first
     watchdog_reboot(0, 0, 0);                    // fire ASAP; does not return on device
@@ -499,6 +547,7 @@ static void cmd_help(char **sp) {
     console_print("  serial, version  (read-only)\r\n");
     console_print(
         "  kv <key>  user key/value store (get kv lists all; set kv <key> clear deletes)\r\n");
+    reply_ok(NULL);
     console_drain();
 }
 
@@ -618,5 +667,5 @@ void command_dispatch(char *s) {
     if (idx >= 0)
         out_action(idx, &sp);
     else
-        console_print("error: unknown command (try 'help')\r\n");
+        reply_err("unknown command (try 'help')");
 }

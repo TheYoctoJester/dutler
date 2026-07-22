@@ -138,8 +138,8 @@ static void plain_task(void) {
             char pair[2] = {(char)ch, '\0'};
             echo(pair);
         } else {
-            line_len = 0;  // overrun: drop the line
-            console_print("error: line too long\r\n");
+            line_len = 0;                            // overrun: drop the line
+            console_print("ERR line too long\r\n");  // plain_task only runs in machine mode
         }
     }
 }
