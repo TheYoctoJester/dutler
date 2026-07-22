@@ -56,8 +56,8 @@ static void cmd_help(char **sp);
 // clang-format off
 static const command_t commands[] = {
     {"out",           cmd_out,           "out <id> on|off|toggle  id=number or name"},
-    {"set",           cmd_set,           "set <key> <value>  keys: baud|format|echo|shell|dutname|outname <n>"},
-    {"get",           cmd_get,           "get [<key>]  read setting(s): baud|format|echo|shell|dutname|outname <n>|serial|version"},
+    {"set",           cmd_set,           "set <key> <value>  configure a setting (keys below)"},
+    {"get",           cmd_get,           "get [<key>]  read setting(s)/property(ies); no key = all"},
     {"save",          cmd_save,          "save  persist settings to flash"},
     {"selftest",      cmd_selftest,      "selftest  GP0<->GP1 loopback check"},
     {"factory-reset", cmd_factory_reset, "factory-reset confirm  erase saved settings"},
@@ -412,16 +412,22 @@ static void cmd_reset(char **sp) {
 
 static void cmd_help(char **sp) {
     (void)sp;
-    // Built from the table so it lists exactly the commands that exist. Kept
-    // within one CDC TX FIFO (512 B) so the whole listing flushes in one go.
+    // Command list is built from the table so it lists exactly what exists. The
+    // set/get keys are listed once in their own section rather than inline on the
+    // set/get rows. The whole listing exceeds one CDC TX FIFO, so drain as we go.
     console_print("DUTler control port\r\ncommands:\r\n");
     for (size_t i = 0; i < COMMAND_COUNT; i++) {
         if (!commands[i].help) continue;  // hidden alias
         console_print("  ");
         console_print(commands[i].help);
         console_print("\r\n");
+        console_drain();
     }
     console_print("  <id> on|off|toggle      shorthand: drop the 'out' keyword\r\n");
+    console_print("get/set keys:\r\n");
+    console_print("  baud, format, echo, shell, dutname, outname <n>  (read/write)\r\n");
+    console_print("  serial, version  (read-only)\r\n");
+    console_drain();
 }
 
 // Append entries of `list` that start with `prefix` to out[] (bounded by max).
