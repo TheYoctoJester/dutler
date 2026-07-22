@@ -9,6 +9,7 @@
 
 #include "config.h"
 #include "core/command.h"
+#include "core/kvstore.h"
 #include "core/outputs.h"
 #include "core/settings.h"
 #include "fakes.h"
@@ -17,6 +18,7 @@
 void setUp(void) {
     flash_fake_reset();
     settings_load();  // defaults
+    kv_load();        // empty user KV store
     outputs_init();   // all outputs OFF
     fake_console_clear();
     fake_bootsel_clear();
@@ -334,6 +336,76 @@ static bool cand_has(const char **c, size_t n, const char *s) {
     return false;
 }
 
+static void test_kv_set_get(void) {
+    run("set kv location rack 3");  // value contains spaces
+    ASSERT_SAID("ok");
+    TEST_ASSERT_EQUAL_STRING("rack 3", kv_get("location"));
+
+    fake_console_clear();
+    run("get kv location");
+    ASSERT_SAID("location rack 3");
+
+    fake_console_clear();
+    run("status");
+    ASSERT_SAID("unsaved changes");  // KV dirtiness shows in status
+}
+
+static void test_kv_list_missing_clear(void) {
+    run("set kv a 1");
+    run("set kv b 2");
+    fake_console_clear();
+    run("get kv");
+    ASSERT_SAID("a 1");
+    ASSERT_SAID("b 2");
+
+    fake_console_clear();
+    run("get kv nope");
+    ASSERT_SAID("no such key");
+
+    run("set kv a clear");
+    TEST_ASSERT_NULL(kv_get("a"));
+    TEST_ASSERT_EQUAL_STRING("2", kv_get("b"));
+}
+
+static void test_kv_validation(void) {
+    fake_console_clear();
+    run("set kv a/b x");  // illegal key charset
+    ASSERT_SAID("error");
+    fake_console_clear();
+    run("set kv");  // missing key
+    ASSERT_SAID("usage");
+    fake_console_clear();
+    run("set kv onlykey");  // missing value
+    ASSERT_SAID("usage");
+}
+
+static void test_kv_save_persists(void) {
+    run("set kv x hello");
+    fake_console_clear();
+    run("save");
+    ASSERT_SAID("saved");
+    TEST_ASSERT_FALSE(kv_dirty());
+
+    run("set kv x changed");  // dirty again, not saved
+    kv_load();                // discard unsaved edits, reload from flash
+    TEST_ASSERT_EQUAL_STRING("hello", kv_get("x"));
+}
+
+static void test_kv_completion(void) {
+    const char *c[24];
+    size_t n = command_complete("set ", 4, c, 24);
+    TEST_ASSERT_TRUE(cand_has(c, n, "kv"));  // kv is a set key
+
+    kv_set("location", "x");
+    kv_set("lamp", "y");
+    n = command_complete("get kv l", 8, c, 24);  // complete existing keys
+    TEST_ASSERT_TRUE(cand_has(c, n, "location"));
+    TEST_ASSERT_TRUE(cand_has(c, n, "lamp"));
+
+    n = command_complete("set kv location ", 16, c, 24);  // value position -> clear
+    TEST_ASSERT_TRUE(cand_has(c, n, "clear"));
+}
+
 static void test_command_complete(void) {
     const char *c[24];
     size_t n;
@@ -401,6 +473,11 @@ int main(void) {
     RUN_TEST(test_get_all);
     RUN_TEST(test_get_single_and_unknown);
     RUN_TEST(test_command_complete);
+    RUN_TEST(test_kv_set_get);
+    RUN_TEST(test_kv_list_missing_clear);
+    RUN_TEST(test_kv_validation);
+    RUN_TEST(test_kv_save_persists);
+    RUN_TEST(test_kv_completion);
     RUN_TEST(test_out_on_off_toggle);
     RUN_TEST(test_number_shorthand);
     RUN_TEST(test_outname_and_shorthand);

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "config.h"
+#include "core/kvstore.h"
 #include "core/outputs.h"
 #include "core/settings.h"
 #include "hardware/watchdog.h"
@@ -28,6 +29,7 @@ int main(void) {
     g_boot_by_watchdog = watchdog_enable_caused_reboot();
 
     settings_load();  // before bridge_init: provides the boot UART defaults
+    kv_load();        // user key/value store
     tusb_init();
     bridge_init();
     outputs_init();
