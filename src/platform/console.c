@@ -68,26 +68,46 @@ void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
     was_open = dtr;
 }
 
+// Push the CDC TX FIFO onto the wire. USB full-speed only drains ~one 64-byte
+// packet per host poll, so pump tud_task() until the FIFO empties. Bounded so a
+// host that isn't reading can't wedge the loop (the main loop feeds the watchdog).
+static void console_drain(void) {
+    for (int i = 0; i < 24 && tud_cdc_n_write_available(CDC_ITF_OUT) < CFG_TUD_CDC_TX_BUFSIZE; i++)
+        tud_task();
+}
+
 // Interactive (shell-on) input: feed each byte to the editor, dispatch a
-// finished line, then re-prompt.
+// finished line, then re-prompt. A full line redraw per keystroke would, on a
+// burst of input (paste / fast typing / bytes buffered between polls), emit far
+// more than the 512-byte TX FIFO can hold before USB drains it, garbling output.
+// So redraws are suppressed while draining the burst and issued once at the end.
 static void shell_task(void) {
     if (!editor_ready) {
         lineedit_init(&g_editor, console_print, command_complete, SHELL_PROMPT);
         lineedit_start(&g_editor);
         editor_ready = true;
     }
+    bool got_input = false;
     while (tud_cdc_n_available(CDC_ITF_OUT)) {
         int ch = tud_cdc_n_read_char(CDC_ITF_OUT);
         if (ch < 0) break;
+        got_input = true;
+        g_editor.suppress = 1;  // defer the per-keystroke redraw
         char *line;
         if (lineedit_feed(&g_editor, (char)ch, &line)) {
+            g_editor.suppress = 0;  // a finished line: its reply + next prompt render now
             if (line[0]) {
                 colorize_reply = true;
                 command_dispatch(line);
                 colorize_reply = false;
             }
             lineedit_start(&g_editor);
+            console_drain();
         }
+    }
+    if (got_input) {  // draw the coalesced final line state once
+        lineedit_redraw(&g_editor);
+        console_drain();
     }
 }
 

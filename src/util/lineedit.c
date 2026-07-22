@@ -16,6 +16,7 @@
 // linenoise's refreshMultiLine; oldpos/oldrows carry the previous render's shape.
 // Every edit (insert, delete, cursor move, history recall) goes through here.
 static void refresh(lineedit_t *ed) {
+    if (ed->suppress) return;  // coalescing a burst: draw once at the end instead
     size_t plen = strlen(ed->prompt);
     size_t cols = ed->cols ? ed->cols : DEFAULT_TERM_COLS;
     char seq[24];
@@ -327,6 +328,11 @@ void lineedit_start(lineedit_t *ed) {
         ed->width_queried = 1;
     }
     ed->write(ed->prompt);
+}
+
+void lineedit_redraw(lineedit_t *ed) {
+    ed->suppress = 0;
+    refresh(ed);
 }
 
 bool lineedit_feed(lineedit_t *ed, char ch, char **out_line) {

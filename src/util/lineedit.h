@@ -43,6 +43,7 @@ typedef struct {
 
     uint16_t cols;          // terminal width in cells (DEFAULT_TERM_COLS until learned)
     uint8_t width_queried;  // 1 once the ESC[6n width probe has been sent
+    uint8_t suppress;       // 1 = defer line redraws (coalesce a burst of input)
     size_t oldpos;          // cursor position at the last refresh (multiline redraw)
     size_t oldrows;         // rows the last render occupied
 
@@ -60,6 +61,11 @@ void lineedit_init(lineedit_t *ed, lineedit_write_fn write, lineedit_complete_fn
 
 // Begin a fresh input line: reset the buffer and print the prompt.
 void lineedit_start(lineedit_t *ed);
+
+// Force a redraw of the current line, clearing the suppress flag. Used to draw
+// the final state once after coalescing a burst of input (see the `suppress`
+// field) so a paste / fast typing doesn't emit one full redraw per byte.
+void lineedit_redraw(lineedit_t *ed);
 
 // Feed one input byte. Returns true when a line is finished (Enter, or a Ctrl-C
 // abort): *out_line then points at the NUL-terminated line inside the editor
