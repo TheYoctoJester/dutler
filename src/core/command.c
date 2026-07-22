@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "config.h"
+#include "core/kvstore.h"
 #include "core/outputs.h"
 #include "core/settings.h"
 #include "hardware/watchdog.h"
@@ -153,6 +154,14 @@ static void get_outname(uint8_t i) {
     console_print(msg);
 }
 
+// Print one user KV entry; drain as we go — the list can exceed one TX FIFO.
+static void print_kv(const char *k, const char *v) {
+    char line[KV_KEY_MAX + KV_VALUE_MAX + 4];
+    snprintf(line, sizeof(line), "%s %s\r\n", k, v);
+    console_print(line);
+    console_drain();
+}
+
 static void cmd_get(char **sp) {
     char *key = strtok_r(NULL, " \t", sp);
     if (!key) {  // no key: dump the whole store
@@ -178,6 +187,22 @@ static void cmd_get(char **sp) {
             return;
         }
         get_outname((uint8_t)(n - 1));
+        return;
+    }
+    if (strcmp(key, "kv") == 0) {  // 'get kv' (all) or 'get kv <key>'
+        char *sub = strtok_r(NULL, " \t", sp);
+        if (!sub) {
+            kv_foreach(print_kv);
+            return;
+        }
+        const char *v = kv_get(sub);
+        if (v) {
+            char line[KV_KEY_MAX + KV_VALUE_MAX + 4];
+            snprintf(line, sizeof(line), "%s %s\r\n", sub, v);
+            console_print(line);
+        } else {
+            console_print("error: no such key\r\n");
+        }
         return;
     }
     if (!get_scalar(key)) console_print("error: unknown key (see 'help' for keys)\r\n");
@@ -226,6 +251,50 @@ static void cmd_set(char **sp) {
         }
         dirty = true;
         console_print("ok\r\n");
+        return;
+    }
+
+    // User key/value store: 'set kv <key> <value|clear>'. The value is the rest of
+    // the line (spaces allowed), so it is parsed here, not as a single token.
+    if (strcmp(what, "kv") == 0) {
+        char *k = strtok_r(NULL, " \t", sp);
+        char *rest = strtok_r(NULL, "", sp);  // remainder of the line (or NULL)
+        if (!k) {
+            console_print("error: usage 'set kv <key> <value|clear>'\r\n");
+            return;
+        }
+        if (strlen(k) >= KV_KEY_MAX) {
+            console_print("error: key too long\r\n");
+            return;
+        }
+        for (const char *c = k; *c; c++) {
+            bool ok = (*c >= 'A' && *c <= 'Z') || (*c >= 'a' && *c <= 'z') ||
+                      (*c >= '0' && *c <= '9') || *c == '.' || *c == '_' || *c == '-';
+            if (!ok) {
+                console_print("error: key may use only [A-Za-z0-9._-]\r\n");
+                return;
+            }
+        }
+        char *v = rest;
+        while (v && (*v == ' ' || *v == '\t')) v++;  // skip leading blanks
+        if (v && strcmp(v, "clear") == 0) {
+            kv_clear(k);  // clearing an absent key is a harmless no-op
+            console_print("ok (run 'save' to persist)\r\n");
+            return;
+        }
+        if (!v || !*v) {
+            console_print("error: usage 'set kv <key> <value|clear>'\r\n");
+            return;
+        }
+        if (strlen(v) >= KV_VALUE_MAX) {
+            console_print("error: value too long\r\n");
+            return;
+        }
+        if (!kv_set(k, v)) {
+            console_print("error: kv store full\r\n");
+            return;
+        }
+        console_print("ok (run 'save' to persist)\r\n");
         return;
     }
 
@@ -337,7 +406,9 @@ static void cmd_set(char **sp) {
 
 static void cmd_save(char **sp) {
     (void)sp;
-    if (settings_save()) {
+    bool ok = settings_save();
+    if (kv_dirty()) ok = kv_save() && ok;  // flush the user KV store too
+    if (ok) {
         dirty = false;
         console_print("saved\r\n");
     } else {
@@ -364,7 +435,7 @@ static void cmd_status(char **sp) {
     console_print(g_settings.echo ? "echo on\r\n" : "echo off\r\n");
     console_print("firmware DUTler " DUTLER_VERSION "\r\n");
     if (g_boot_by_watchdog) console_print("note: last reset was a watchdog timeout\r\n");
-    if (dirty) console_print("(unsaved changes - use 'save')\r\n");
+    if (dirty || kv_dirty()) console_print("(unsaved changes - use 'save')\r\n");
 }
 
 static void cmd_selftest(char **sp) {
@@ -381,6 +452,7 @@ static void cmd_factory_reset(char **sp) {
     }
     bool had_name = g_settings.device_name[0] != '\0';
     settings_reset();
+    kv_reset();  // wipe the user key/value store too
     dirty = false;
     console_print("factory reset done (bridge UART defaults apply after reboot)\r\n");
     // The device name is part of the live USB identity; if one was set, bounce the
@@ -425,6 +497,8 @@ static void cmd_help(char **sp) {
     console_print("get/set keys:\r\n");
     console_print("  baud, format, echo, shell, dutname, outname <n>  (read/write)\r\n");
     console_print("  serial, version  (read-only)\r\n");
+    console_print(
+        "  kv <key>  user key/value store (get kv lists all; set kv <key> clear deletes)\r\n");
     console_drain();
 }
 
@@ -437,10 +511,30 @@ static size_t add_matches(const char **out, size_t max, size_t n, const char *pr
     return n;
 }
 
+// Append existing KV keys matching `prefix` to out[] (via kv_foreach). Uses file
+// statics for the callback — command_complete is not reentrant.
+static const char **g_kvc_out;
+static size_t g_kvc_max, g_kvc_n, g_kvc_plen;
+static const char *g_kvc_prefix;
+static void kvc_collect(const char *k, const char *v) {
+    (void)v;
+    if (g_kvc_n < g_kvc_max && strncmp(k, g_kvc_prefix, g_kvc_plen) == 0) g_kvc_out[g_kvc_n++] = k;
+}
+static size_t add_kv_keys(const char **out, size_t max, size_t n, const char *prefix) {
+    g_kvc_out = out;
+    g_kvc_max = max;
+    g_kvc_n = n;
+    g_kvc_prefix = prefix;
+    g_kvc_plen = strlen(prefix);
+    kv_foreach(kvc_collect);
+    return g_kvc_n;
+}
+
 size_t command_complete(const char *line, size_t cursor, const char **out, size_t max) {
-    static const char *const set_keys[] = {"baud", "format", "echo", "shell", "dutname", "outname"};
-    static const char *const get_keys[] = {"baud",    "format",  "echo",   "shell",
-                                           "dutname", "outname", "serial", "version"};
+    static const char *const set_keys[] = {"baud",    "format",  "echo", "shell",
+                                           "dutname", "outname", "kv"};
+    static const char *const get_keys[] = {"baud",    "format", "echo", "shell",  "dutname",
+                                           "outname", "serial", "kv",   "version"};
     static const char *const on_off[] = {"on", "off"};
     static const char *const on_off_tog[] = {"on", "off", "toggle"};
     static const char *const clear_kw[] = {"clear"};
@@ -491,12 +585,17 @@ size_t command_complete(const char *line, size_t cursor, const char **out, size_
                 n = add_matches(out, max, n, prefix, on_off, sizeof(on_off) / sizeof(*on_off));
             else if (strcmp(argv[1], "dutname") == 0)
                 n = add_matches(out, max, n, prefix, clear_kw, 1);
+            else if (strcmp(argv[1], "kv") == 0)  // 'set kv <keyprefix>' -> existing keys
+                n = add_kv_keys(out, max, n, prefix);
+        } else if (strcmp(argv[0], "get") == 0 && strcmp(argv[1], "kv") == 0) {
+            n = add_kv_keys(out, max, n, prefix);  // 'get kv <keyprefix>'
         } else if (strcmp(argv[0], "out") == 0)
             n = add_matches(out, max, n, prefix, on_off_tog,
                             sizeof(on_off_tog) / sizeof(*on_off_tog));
     } else if (tokpos == 3) {
-        if (strcmp(argv[0], "set") == 0 && strcmp(argv[1], "outname") == 0)
-            n = add_matches(out, max, n, prefix, clear_kw, 1);
+        if (strcmp(argv[0], "set") == 0 &&
+            (strcmp(argv[1], "outname") == 0 || strcmp(argv[1], "kv") == 0))
+            n = add_matches(out, max, n, prefix, clear_kw, 1);  // offer 'clear'
     }
     return n;
 }

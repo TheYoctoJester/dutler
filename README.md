@@ -228,6 +228,11 @@ always-current command list, so this README doesn't try to mirror it. In brief:
   - **`serial`** — read-only device property; `get serial` prints the Pico's hardware unique ID
     (the same value used as the USB `iSerial`). `set serial` is rejected.
   - **`version`** — read-only; `get version` prints the firmware version. `set version` is rejected.
+  - **`kv <key>`** — a user key/value store for arbitrary strings (asset tag, rack location, DUT
+    notes…), kept in its own flash area separate from the built-in settings. `set kv <key> <value>`
+    stores (the value is the rest of the line, so spaces are allowed); `set kv <key> clear` deletes;
+    `get kv <key>` reads one; `get kv` lists all. Keys are `[A-Za-z0-9._-]` (≤ 31 chars), values
+    ≤ 111 chars. Like the other settings it stages until `save`.
 - **`save`** persists the settings to flash; **`status`** shows the outputs plus a quick summary.
 - **`selftest`** (GP0↔GP1 loopback), **`factory-reset confirm`**,
   **`bootsel`** (reboot into the USB bootloader), and **`reset`** (warm reboot into the

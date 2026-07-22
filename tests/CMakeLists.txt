@@ -75,8 +75,8 @@ target_include_directories(test_kvstore PRIVATE fakes)
 # Command interpreter — real command.c/outputs.c/settings.c + fakes + SDK shims.
 dutler_test(test_command
     test_command.c
-    ${SRC}/core/command.c ${SRC}/core/outputs.c ${SRC}/core/settings.c ${SRC}/core/settings_codec.c
-    ${SRC}/util/crc32.c ${SRC}/util/numparse.c
+    ${SRC}/core/command.c ${SRC}/core/kvstore.c ${SRC}/core/outputs.c ${SRC}/core/settings.c
+    ${SRC}/core/settings_codec.c ${SRC}/util/crc32.c ${SRC}/util/numparse.c
     fakes/flash_port_fake.c fakes/fake_console.c fakes/fake_bridge.c
     fakes/fake_debug.c fakes/fake_sdk.c)
 target_include_directories(test_command PRIVATE fakes shims)
