@@ -29,9 +29,11 @@ const uint8_t *flash_port_read(uint32_t off);
 // Erase the FLASH_PORT_SECTOR_SIZE sector at `off` (must be sector-aligned).
 void flash_port_erase_sector(uint32_t off);
 
-// Erase the sector at `off`, then program FLASH_PORT_PAGE_SIZE bytes from `page`
-// into its start — as one atomic operation (target: a single interrupts-masked
-// critical section, so no code runs from flash mid-write).
-void flash_port_write_sector(uint32_t off, const uint8_t *page);
+// Erase the sector at `off`, then program `len` bytes from `buf` into its start —
+// as one atomic operation (target: a single interrupts-masked critical section,
+// so no code runs from flash mid-write). `len` must be a multiple of
+// FLASH_PORT_PAGE_SIZE and <= FLASH_PORT_SECTOR_SIZE (the settings store writes one
+// page; the KV store writes several).
+void flash_port_write_sector(uint32_t off, const uint8_t *buf, uint32_t len);
 
 #endif  // DUTLER_FLASH_PORT_H

@@ -65,6 +65,13 @@ dutler_test(test_settings
     fakes/flash_port_fake.c)
 target_include_directories(test_settings PRIVATE fakes)
 
+# User key/value store — real kvstore.c against the RAM flash fake.
+dutler_test(test_kvstore
+    test_kvstore.c
+    ${SRC}/core/kvstore.c ${SRC}/util/crc32.c
+    fakes/flash_port_fake.c)
+target_include_directories(test_kvstore PRIVATE fakes)
+
 # Command interpreter — real command.c/outputs.c/settings.c + fakes + SDK shims.
 dutler_test(test_command
     test_command.c

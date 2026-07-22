@@ -176,7 +176,7 @@ bool settings_save(void) {
     memset(page, 0xFF, sizeof(page));
     settings_codec_encode(page, &g_settings, seq);
 
-    flash_port_write_sector(off, page);
+    flash_port_write_sector(off, page, FLASH_PORT_PAGE_SIZE);
 
     // Verify the freshly written slot before it counts. On failure the other
     // (still-intact) slot stays freshest, so no config is lost. Reads into a

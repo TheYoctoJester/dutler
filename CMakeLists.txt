@@ -48,6 +48,7 @@ endif()
 add_executable(dutler
     src/main.c
     src/core/command.c
+    src/core/kvstore.c
     src/core/outputs.c
     src/core/settings.c
     src/core/settings_codec.c
@@ -75,7 +76,7 @@ target_include_directories(dutler PRIVATE
 option(DUTLER_WERROR "Treat compiler warnings as errors on DUTler's own sources" OFF)
 set(DUTLER_OWN_SOURCES
     src/main.c
-    src/core/command.c src/core/outputs.c src/core/settings.c src/core/settings_codec.c
+    src/core/command.c src/core/kvstore.c src/core/outputs.c src/core/settings.c src/core/settings_codec.c
     src/platform/bridge.c src/platform/console.c src/platform/debug.c
     src/platform/flash_port_pico.c src/platform/usb_descriptors.c
     src/util/crc32.c src/util/numparse.c src/util/lineedit.c)
