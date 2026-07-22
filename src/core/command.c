@@ -181,14 +181,13 @@ static void cmd_get(char **sp) {
         return;
     }
     if (!get_scalar(key))
-        console_print("error: unknown key (baud|format|echo|shell|dutname|outname|serial|version)\r\n");
+        console_print("error: unknown key (see 'help' for keys)\r\n");
 }
 
 static void cmd_set(char **sp) {
     char *what = strtok_r(NULL, " \t", sp);
     if (!what) {
-        console_print(
-            "error: usage 'set <key> <value>'  keys: baud|format|echo|shell|dutname|outname <n>\r\n");
+        console_print("error: usage 'set <key> <value>' (see 'help' for keys)\r\n");
         return;
     }
 
@@ -333,7 +332,7 @@ static void cmd_set(char **sp) {
     } else if (strcmp(what, "serial") == 0 || strcmp(what, "version") == 0) {
         console_print("error: read-only property (use 'get')\r\n");
     } else {
-        console_print("error: unknown key (baud|format|echo|shell|dutname|outname)\r\n");
+        console_print("error: unknown key (see 'help' for keys)\r\n");
     }
 }
 
