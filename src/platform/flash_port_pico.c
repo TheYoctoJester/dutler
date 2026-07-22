@@ -26,12 +26,13 @@ void flash_port_erase_sector(uint32_t off) {
     restore_interrupts(ints);
 }
 
-void flash_port_write_sector(uint32_t off, const uint8_t *page) {
+void flash_port_write_sector(uint32_t off, const uint8_t *buf, uint32_t len) {
     // Erase + program in one critical section: no IRQ (which would run from
-    // flash) executes between erasing the sector and reprogramming its page.
+    // flash) executes between erasing the sector and reprogramming it. `len` is a
+    // page multiple (flash_range_program requires it) and fits one sector.
     watchdog_update();
     uint32_t ints = save_and_disable_interrupts();
     flash_range_erase(off, FLASH_PORT_SECTOR_SIZE);
-    flash_range_program(off, page, FLASH_PORT_PAGE_SIZE);
+    flash_range_program(off, buf, len);
     restore_interrupts(ints);
 }

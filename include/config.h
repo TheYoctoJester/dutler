@@ -97,4 +97,11 @@
 // Single kill-buffer size for Ctrl-U/K/W + Ctrl-Y yank.
 #define KILL_MAX CONSOLE_LINE_MAX
 
+// ---- User key/value store (kvstore.c) -------------------------------
+// Arbitrary user strings persisted under the control-port `set kv`/`get kv`
+// commands, in their own flash A/B slots (separate from the built-in settings).
+#define KV_KEY_MAX 32        // max key length, including NUL
+#define KV_VALUE_MAX 112     // max value length, including NUL (bounded by CONSOLE_LINE_MAX)
+#define KV_STORE_BYTES 2048  // total packed payload budget ("key\0value\0" repeated)
+
 #endif  // CONFIG_H

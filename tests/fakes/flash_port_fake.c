@@ -47,11 +47,11 @@ const uint8_t *flash_port_read(uint32_t off) { return &flash[off]; }
 
 void flash_port_erase_sector(uint32_t off) { memset(&flash[off], 0xFF, FLASH_PORT_SECTOR_SIZE); }
 
-void flash_port_write_sector(uint32_t off, const uint8_t *page) {
+void flash_port_write_sector(uint32_t off, const uint8_t *buf, uint32_t len) {
     memset(&flash[off], 0xFF, FLASH_PORT_SECTOR_SIZE);  // erase
     if (fail_next_program) {
         fail_next_program = false;  // simulate power loss after erase, before program
         return;
     }
-    memcpy(&flash[off], page, FLASH_PORT_PAGE_SIZE);
+    memcpy(&flash[off], buf, len);
 }
