@@ -62,7 +62,7 @@ The examples below use the macOS `cu.usbmodem*` names; on Linux substitute the m
 - **CMake ≥ 3.13**, **Ninja**, **picotool**, and the **Arm GNU bare-metal toolchain**
   (`arm-none-eabi-gcc` — developed against *14.2.Rel1*).
   - macOS: `brew install cmake ninja picotool`, plus the Arm toolchain (download the
-    `arm-gnu-toolchain-*-arm-none-eabi` for darwin and unpack it).
+    `arm-gnu-toolchain-*-arm-none-eabi` for darwin, start [here](https://gitlab.arm.com/tooling/gnu-toolchains-for-arm) and download e.g. this [tarball](https://gitlab.arm.com/api/v4/projects/tooling%2Fgnu-toolchains-for-arm/packages/generic/gnu-toolchain/14.2.rel1/arm-gnu-toolchain-14.2.rel1-darwin-arm64-arm-none-eabi.pkg) and unpack it).
   - Linux: your distro's `cmake`, `ninja-build`, `picotool` (or build it), plus the Arm GNU
     toolchain (distro package or the official tarball).
 - **Raspberry Pi Pico SDK 2.2.0** with submodules (it pulls in TinyUSB).
